@@ -30,6 +30,7 @@ The forum excerpts below are kept short and are linked to their original public 
 | Repetitive, time-consuming resume tailoring | JD-specific resume optimisation with reusable profile evidence |
 | Concern about AI-generated false claims | Grounded generation, factuality checks, and explicit user approval |
 | Interview readiness and low confidence | Role-specific mock interview prototype and feedback |
+| Work-pass and sponsorship eligibility | Hard-constraint filtering before ranking roles |
 | Application overload and uncertainty about next steps | Target tracking, deadlines, time budget, and next-action suggestions |
 
 ## Recommended Presentation Wording
