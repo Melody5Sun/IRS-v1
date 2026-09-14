@@ -11,12 +11,24 @@
 
 ### ✓ 必须遵守
 - **提交信息格式**: `[类型]: 描述 (关键词)`
-  - 类型: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
-  - 例: `[feat]: 实现 NER 解析器 (NLP, ESCO)`
-  - 例: `[fix]: 修复虚拟环境路径问题 (config)`
+  - **第一行（主题）:** `<tag>: <summary>`，使用祈使语气，不超过 72 个字符。
+    - **空行**
+    - **正文:** 使用 `-` 列出 2–5 条要点，描述具体完成的更改。每条要点应为一句简洁的句子，重点说明改了什么以及为什么改，而不是如何修改。
 
+    **标签选择——按以下顺序检查:**
+    - `fix:` — 修复错误或故障行为
+    - `feat:` — 添加面向用户的新功能
+    - `refactor:` — 在不改变行为的情况下重构代码
+    - `style:` — 不改变逻辑的视觉、UI 或 CSS 更改
+    - `chore:` — 构建、工具、配置或依赖项更新
+    - `docs:` — 仅限文档更改
+    - `test:` — 添加或更新测试
+    - `perf:` — 性能改进
+    - `ci:` — CI/CD 流水线更改
+    - 如果以上标签均不适用，请选择能够准确描述更改且最具代表性的标签（例如 `move:`、`rename:`、`wip:`、`revert:`）。
+   
 - **分支命名**:
-  - Feature: `feature/user-auth-system`
+  - Feature: `feat/user-auth-system`
   - Bugfix: `bugfix/env-loading-issue`
   - Docs: `docs/architecture-guide`
   - Never push to `main` directly — always use PR
