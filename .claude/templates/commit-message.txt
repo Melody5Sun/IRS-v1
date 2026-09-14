@@ -1,0 +1,10 @@
+[类型]: 简短描述 (关键词)
+
+类型: feat | fix | docs | refactor | test | chore
+
+示例:
+[feat]: 实现 JD 解析器 (NLP, spaCy)
+[fix]: 修复虚拟环境路径问题 (config)
+[docs]: 更新架构图说明 (proposal-assets)
+
+注意: 不要添加 Co-Authored-By 行

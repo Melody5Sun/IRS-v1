@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-demo",
+      "description": "前端演示服务器（占位模板 — 架构确定后更新 runtimeExecutable/runtimeArgs/port）",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 3000
+    }
+  ]
+}

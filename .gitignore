@@ -1,0 +1,26 @@
+# 敏感信息 — 切勿提交
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+credentials/
+secrets/
+
+# 依赖与构建产物
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
+dist/
+build/
+
+# 编辑器与系统文件
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Claude Code 本地个人设置（不共享）
+.claude/settings.local.json
