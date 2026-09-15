@@ -1,11 +1,12 @@
 from pydantic import BaseModel, Field
 
 from app.schemas.job import JobAnalysisRequest
-from app.schemas.resume import ResumeProfile
+from app.schemas.resume import ResumeDocument
 
 
 class RecommendationRequest(BaseModel):
-    candidate: ResumeProfile
+    # 直接接收 /resumes/parse 的输出，前端不需要做任何转换
+    candidate: ResumeDocument
     jobs: list[JobAnalysisRequest] = Field(..., min_length=1)
 
 

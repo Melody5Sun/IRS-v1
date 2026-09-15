@@ -5,9 +5,10 @@ from fastapi.testclient import TestClient
 
 from app.api.v1.routes import resumes as resumes_route
 from app.main import app
+from app.matching.scorer import calculate_experience_years
 from app.parsers.llm_resume_parser import SYSTEM_PROMPT, LLMResumeParser, ResumeParsingError
 from app.parsers.resume_parser import ResumeParser
-from app.schemas.resume import ResumeDocument
+from app.schemas.resume import Experience, ResumeDocument
 from app.services.resume_service import ResumeService
 
 client = TestClient(app)
@@ -197,10 +198,16 @@ def test_recommendations_rank_matching_job_first() -> None:
         json={
             "candidate": {
                 "name": "Jane Tan",
-                "skills": ["python", "react", "sql"],
-                "education": ["Master of Computing"],
-                "experience_years": 2,
-                "work_authorization": "student_pass",
+                "visa_status": "student_pass",
+                "skills": ["Python", "React", "SQL"],
+                "experiences": [
+                    {
+                        "company": "Acme",
+                        "title": "Developer",
+                        "start_date": "2023-01",
+                        "end_date": "2024-12",
+                    }
+                ],
             },
             "jobs": [
                 {
@@ -227,3 +234,61 @@ def test_recommendations_rank_matching_job_first() -> None:
     body = response.json()
     assert body["recommendations"][0]["job_id"] == "job-1"
     assert body["recommendations"][0]["eligible"] is True
+
+
+def test_parsed_resume_feeds_recommendations(monkeypatch: pytest.MonkeyPatch) -> None:
+    llm_response = json.dumps(
+        {
+            "name": "Jane Tan",
+            "visa_status": "student_pass",
+            "skills": ["Python", "FastAPI", "Docker"],
+            "experiences": [
+                {
+                    "company": "Acme",
+                    "title": "Backend Intern",
+                    "employment_type": "internship",
+                    "start_date": "2024-01",
+                    "end_date": "2024-12",
+                }
+            ],
+        }
+    )
+    _use_fake_llm(monkeypatch, [llm_response])
+    parsed = client.post("/api/v1/resumes/parse", json={"text": "Jane Tan resume"}).json()
+
+    job = {
+        "title": "Backend Intern",
+        "company": "Acme",
+        "description": "Build APIs with Python, FastAPI and SQL.",
+        "min_experience_years": 1,
+    }
+    response = client.post(
+        "/api/v1/recommendations",
+        json={
+            "candidate": parsed,
+            "jobs": [
+                {**job, "job_id": "sponsor", "visa_sponsorship": True},
+                {**job, "job_id": "no-sponsor", "visa_sponsorship": False},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    items = {item["job_id"]: item for item in response.json()["recommendations"]}
+    assert items["sponsor"]["eligible"] is True
+    assert items["sponsor"]["matched_skills"] == ["fastapi", "python"]
+    assert items["sponsor"]["missing_skills"] == ["sql"]
+    # student_pass 需要担保，不提供担保的岗位应被硬约束筛掉
+    assert items["no-sponsor"]["eligible"] is False
+
+
+def test_experience_years_merges_overlaps_and_handles_partial_dates() -> None:
+    def exp(start: str | None, end: str | None) -> Experience:
+        return Experience(company="c", title="t", start_date=start, end_date=end)
+
+    # 1-6 月和 4-12 月重叠，合计 12 个月；缺开始日期的跳过；缺结束日期的只算 1 个月
+    overlapping = [exp("2023-01", "2023-06"), exp("2023-04", "2023-12"), exp(None, "2024"), exp("2025-03", None)]
+    assert calculate_experience_years(overlapping) == 1.1
+    assert calculate_experience_years([exp("2021", "2021")]) == 1.0
+    assert calculate_experience_years([exp("2024-01", "present")]) > 0
+    assert calculate_experience_years([]) == 0
