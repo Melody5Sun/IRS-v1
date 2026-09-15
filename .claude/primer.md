@@ -4,7 +4,6 @@
 
 ## ⏭️ 下一步
 - [ ] 合并 [PR #3](https://github.com/Melody5Sun/IRS-v1/pull/3)（简历 PDF 解析 + schema/prompt 调整），合并前用真实 PDF 简历跑一次 `/parse-pdf` 检查输出质量
-- [ ] 打通简历解析 → 推荐：`/recommendations` 目前吃的是旧的扁平 `ResumeProfile`，要改成接收 `ResumeDocument`（见已知限制）
 - [ ] **用户偏好设置**模块：求职地点、期望职位等从简历 schema 移出的字段，改为用户手动填写
 - [ ] JD 解析升级：目前是关键词词表匹配，按提案接入 Sentence-BERT 语义匹配 + ESCO 技能对齐
 - [ ] 提案中尚未开始的部分：遗传算法投递排期、Neo4j 知识图谱、RAG 面试准备
@@ -25,6 +24,7 @@
 - `SYSTEM_PROMPT` 重写为英文：逐字段说明、禁止编造、强制英文输出，约 838 token
 - 测试 `test_system_prompt_covers_every_schema_field`：schema 字段和 prompt 不同步时直接失败
 - 推荐基线：技能关键词交集打分 + 硬约束（经验年限、签证担保）
+- 简历解析 → 推荐已打通：`/recommendations` 的 `candidate` 直接接收 `ResumeDocument`。技能用 JD 同一套词表归一化；经验年限按 experiences 日期的月份并集计算，重叠不重复算；签证约束使用 `requires_sponsorship`（旧的 `ResumeProfile` 已删除）
 - GitHub Actions CI 运行 backend pytest（PR #2）；当前共 9 个测试
 - `settings.json` 的 deny 规则禁止 Claude 读取 `.env`、打印环境变量
 
@@ -33,8 +33,9 @@
 - [lessons.md](lessons.md) — 踩坑记录（**本机 Python 环境搭建方法在这里**）
 
 ## ⚠️ 已知限制
-- **解析结果和推荐接口的数据模型对不上**：`scorer.py` / `RecommendationRequest` 仍使用 `ResumeProfile`（skills/education 为字符串列表，另有 experience_years、work_authorization），和 `ResumeDocument` 不兼容，需要做转换或统一
-- JD 技能抽取依赖 `skill_lexicon.py` 固定词表，词表外的技能识别不到
+- JD 和候选人的技能匹配都依赖 `skill_lexicon.py` 固定词表，词表外的技能识别不到（也不会出现在 matched/missing 里）；"React.js"、"ReactJS" 这类写法匹配不到 react
+- visa_status 为 not_stated 的候选人会被视为需要担保，碰到不提供担保的岗位会判为不合格
+- 经验年限：只写了年份的日期按整年算，同一年起止的短经历会被高估；学历要求（`degree_required`）还没参与硬约束
 - 前端只有一个静态 demo（`SystemCode/frontend/IT CareerPilot-frontend demo.html`），还没接后端 API
 - 仓库里没有样例简历，prompt 效果只能靠各自本地的真实简历人工验证
 - 本机没有系统 Python，要用 uv 建 `SystemCode/backend/.venv`（步骤见 lessons.md）；`.venv`、`.uv-python` 已被 gitignore 忽略

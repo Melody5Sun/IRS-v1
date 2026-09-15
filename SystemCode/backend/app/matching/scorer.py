@@ -1,16 +1,49 @@
+import re
+from datetime import date
+
+from app.parsers.text_parser import extract_skills
 from app.schemas.job import JobAnalysisRequest
 from app.schemas.recommendation import RecommendationItem
-from app.schemas.resume import ResumeProfile
+from app.schemas.resume import Experience, ResumeDocument
 from app.services.job_service import JobService
+
+DATE_PATTERN = re.compile(r"(\d{4})(?:-(\d{1,2}))?")
+
+
+def _month_index(value: str | None, *, is_end: bool) -> int | None:
+    if not value:
+        return None
+    if value.strip().lower() == "present":
+        today = date.today()
+        return today.year * 12 + today.month - 1
+    match = DATE_PATTERN.fullmatch(value.strip())
+    if not match:
+        return None
+    # ponytail: 只写了年份时按整年算（起始 1 月、结束 12 月），同年起止的短经历会被高估
+    month = int(match.group(2)) if match.group(2) else (12 if is_end else 1)
+    return int(match.group(1)) * 12 + month - 1
+
+
+def calculate_experience_years(experiences: list[Experience]) -> float:
+    # 按月份集合累计，时间重叠的经历不会被重复计算
+    months: set[int] = set()
+    for experience in experiences:
+        start = _month_index(experience.start_date, is_end=False)
+        if start is None:
+            continue
+        end = _month_index(experience.end_date, is_end=True)
+        months.update(range(start, (start if end is None else end) + 1))
+    return round(len(months) / 12, 1)
 
 
 class RecommendationScorer:
     def __init__(self, job_service: JobService | None = None) -> None:
         self.job_service = job_service or JobService()
 
-    def score(self, candidate: ResumeProfile, job: JobAnalysisRequest) -> RecommendationItem:
+    def score(self, candidate: ResumeDocument, job: JobAnalysisRequest) -> RecommendationItem:
         analysis = self.job_service.analyze(job)
-        candidate_skills = set(candidate.skills)
+        # 用和 JD 同一套词表归一化（"Python" -> "python"），两边技能名才对得上
+        candidate_skills = set(extract_skills("\n".join(candidate.skills)))
         required_skills = set(analysis.required_skills)
         matched_skills = sorted(candidate_skills & required_skills)
         missing_skills = sorted(required_skills - candidate_skills)
@@ -39,21 +72,21 @@ class RecommendationScorer:
 
     def _check_constraints(
         self,
-        candidate: ResumeProfile,
+        candidate: ResumeDocument,
         job: JobAnalysisRequest,
     ) -> tuple[bool, list[str]]:
         reasons: list[str] = []
         eligible = True
 
         if job.min_experience_years is not None:
-            candidate_years = candidate.experience_years or 0
+            candidate_years = calculate_experience_years(candidate.experiences)
             if candidate_years < job.min_experience_years:
                 eligible = False
                 reasons.append(
                     f"Experience below requirement: {candidate_years} < {job.min_experience_years} years."
                 )
 
-        if job.visa_sponsorship is False and candidate.work_authorization == "requires_sponsorship":
+        if job.visa_sponsorship is False and candidate.requires_sponsorship:
             eligible = False
             reasons.append("Candidate requires sponsorship but the job does not provide it.")
 
