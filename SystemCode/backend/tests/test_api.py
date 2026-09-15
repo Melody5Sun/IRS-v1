@@ -116,6 +116,59 @@ def test_parse_resume_raises_after_second_failure(monkeypatch: pytest.MonkeyPatc
         client.post("/api/v1/resumes/parse", json={"text": "some resume text"})
 
 
+def _build_minimal_pdf(text: str) -> bytes:
+    """手工拼一个最小的单页 PDF，避免为了测试引入新依赖。"""
+    content = f"BT /F1 12 Tf 10 100 Td ({text}) Tj ET".encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >>"
+        b" /MediaBox [0 0 200 200] /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(content), content),
+    ]
+
+    body = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(body))
+        body += b"%d 0 obj\n%s\nendobj\n" % (index, obj)
+
+    xref_offset = len(body)
+    body += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    for offset in offsets:
+        body += b"%010d 00000 n \n" % offset
+    body += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF" % (
+        len(objects) + 1,
+        xref_offset,
+    )
+    return bytes(body)
+
+
+def test_parse_resume_pdf_extracts_structured_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    llm_response = json.dumps({"name": "PDF Candidate", "visa_status": "student_pass"})
+    _use_fake_llm(monkeypatch, [llm_response])
+
+    pdf_bytes = _build_minimal_pdf("PDF Candidate")
+
+    response = client.post(
+        "/api/v1/resumes/parse-pdf",
+        files={"file": ("resume.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "PDF Candidate"
+
+
+def test_parse_resume_pdf_rejects_non_pdf_upload() -> None:
+    response = client.post(
+        "/api/v1/resumes/parse-pdf",
+        files={"file": ("resume.txt", b"not a pdf", "text/plain")},
+    )
+
+    assert response.status_code == 400
+
+
 def test_recommendations_rank_matching_job_first() -> None:
     response = client.post(
         "/api/v1/recommendations",
