@@ -63,7 +63,7 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
                     "country": "Singapore",
                 }
             ],
-            "skills": [{"name": "Python"}],
+            "skills": ["Python"],
             "educations": [
                 {
                     "institution": "NUS",
@@ -90,7 +90,7 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
     assert body["visa_status"] == "student_pass"
     assert body["requires_sponsorship"] is True
     assert body["experiences"][0]["employment_type"] == "internship"
-    assert body["skills"][0] == {"name": "Python"}
+    assert body["skills"] == ["Python"]
     assert body["educations"][0]["entry_type"] == "degree"
     assert body["research"][0]["title"] == "Federated Learning for Edge Devices"
 

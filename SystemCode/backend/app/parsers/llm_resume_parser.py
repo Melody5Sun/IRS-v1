@@ -40,7 +40,7 @@ Schema (// explains the field):
     "summary": "string",  // problem, methods, results; publication venue if any
     "start_date": "string|null", "end_date": "string|null"
   }],
-  "skills": [{"name": "string"}],  // one skill per item (split "Python/Java"); from the skills section and technologies named elsewhere; no duplicates
+  "skills": ["string"],  // one skill per item (split "Python/Java"); from the skills section and technologies named elsewhere; no duplicates
   "educations": [{  // diploma or above, plus exchange programmes; skip secondary school
     "institution": "string",
     "entry_type": "degree|exchange",  // exchange = exchange/study abroad without a degree

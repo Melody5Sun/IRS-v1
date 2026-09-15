@@ -28,10 +28,6 @@ class ResumeProfile(BaseModel):
     work_authorization: str | None = None
 
 
-class Skill(BaseModel):
-    name: str
-
-
 class Experience(BaseModel):
     company: str
     title: str
@@ -90,7 +86,7 @@ class ResumeDocument(BaseModel):
     experiences: list[Experience] = Field(default_factory=list)
     projects: list[Project] = Field(default_factory=list)
     research: list[Research] = Field(default_factory=list)
-    skills: list[Skill] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
     educations: list[Education] = Field(default_factory=list)
     certificates: list[Certificate] = Field(default_factory=list)
     languages: list[Language] = Field(default_factory=list)
