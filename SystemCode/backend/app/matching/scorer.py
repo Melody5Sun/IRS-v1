@@ -86,10 +86,6 @@ class RecommendationScorer:
                     f"Experience below requirement: {candidate_years} < {job.min_experience_years} years."
                 )
 
-        if job.visa_sponsorship is False and candidate.requires_sponsorship:
-            eligible = False
-            reasons.append("Candidate requires sponsorship but the job does not provide it.")
-
         if eligible:
             reasons.append("Hard constraints passed.")
 

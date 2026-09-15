@@ -21,8 +21,6 @@ class JobParser:
         constraints: list[str] = []
         if request.location:
             constraints.append(f"location:{request.location}")
-        if request.visa_sponsorship is not None:
-            constraints.append(f"visa_sponsorship:{request.visa_sponsorship}")
         if request.degree_required:
             constraints.append(f"degree:{request.degree_required}")
         if request.min_experience_years is not None:
