@@ -20,7 +20,7 @@
 
 ## ⚠️ 已知限制
 - 项目尚无代码实现，`launch.json` 目前是占位模板
-- Co-Authored-By 行禁用（学术项目要求，pre-commit 钩子强制检查）
+- Co-Authored-By 行禁用（学术项目要求，含协作者提交——一律以实际提交者自己的身份提交，不加共同作者标注）。强制机制是真正的 git `commit-msg` 钩子（`.claude/hooks/commit-msg`），**每台新克隆本仓库的机器都需手动运行一次** `git config core.hooksPath .claude/hooks`（本机已配置好）
 - IRS-Project-Proposal-V1-CN.docx 是最终版本，其他草稿文件（.md）可忽略
 
 ## 🛠️ 快速启动

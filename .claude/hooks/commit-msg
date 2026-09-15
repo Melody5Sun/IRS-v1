@@ -1,12 +1,12 @@
 #!/bin/bash
-# Pre-commit 验证脚本
-# 检查：1) 禁止 Co-Authored-By 行  2) 敏感文件未被提交
+# git commit-msg 钩子（需 git config core.hooksPath .claude/hooks 激活）
+# 检查：1) 禁止 Co-Authored-By 行（无论谁提交）  2) 敏感文件未被提交
 
 COMMIT_MSG_FILE="$1"
 
 if [ -n "$COMMIT_MSG_FILE" ] && [ -f "$COMMIT_MSG_FILE" ]; then
-  if grep -qi "Co-Authored-By" "$COMMIT_MSG_FILE"; then
-    echo "错误: 提交信息不能包含 'Co-Authored-By' 行（学术项目要求，须以学生本人名义提交）"
+  if grep -qiE "^Co-Authored-By:" "$COMMIT_MSG_FILE"; then
+    echo "错误: 提交信息不能包含 'Co-Authored-By:' 尾注行（学术项目要求：以提交者本人身份提交，不添加共同作者标注）"
     exit 1
   fi
 fi

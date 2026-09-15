@@ -25,7 +25,7 @@ IRS-v1/
 │   ├── primer.md                      # 进度快照
 │   ├── settings.json                  # 权限与钩子配置
 │   ├── launch.json                    # 启动配置（占位，待代码实现）
-│   ├── hooks/                         # Git 钩子脚本
+│   ├── hooks/commit-msg               # 真正的 git commit-msg 钩子（需一次性激活，见下）
 │   ├── templates/                     # 提交信息/PR/lesson 模板
 │   └── lessons.md                     # 团队学习知识库
 └── proposal-assets/                   # 架构图、用户流程图、人设研究
@@ -45,4 +45,7 @@ IRS-v1/
 - AI 工作流规则详见 [.claude/CLAUDE.md](.claude/CLAUDE.md)
 - 开发进度追踪详见 [.claude/primer.md](.claude/primer.md)
 - 踩坑记录详见 [.claude/lessons.md](.claude/lessons.md)
-- **提交规范**: 禁止 Co-Authored-By 行，所有提交以学生本人名义
+- **提交规范**: 禁止 Co-Authored-By 行——无论学生本人还是其他协作者提交，一律以实际提交者自己的身份提交，不加共同作者标注。详见 [.claude/CLAUDE.md](.claude/CLAUDE.md#提交规范)。首次克隆本仓库后需运行一次（`.git/hooks/` 不随仓库同步）：
+  ```bash
+  git config core.hooksPath .claude/hooks
+  ```

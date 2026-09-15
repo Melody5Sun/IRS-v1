@@ -5,33 +5,34 @@
 ## 提交规范
 
 ### ❌ 禁止事项
-- **不添加 Co-Authored-By 行** — 所有提交必须以 Sun Wenjing 名义提交
-  - Pre-commit 钩子会检查并拒绝包含 "Co-Authored-By" 的提交信息
-  - 这是学术项目的要求，不能绕过
+- **不添加 Co-Authored-By 行** — 无论谁实际执行提交（学生本人或其他协作者），一律不添加 Co-Authored-By（含 Claude 的共同作者标注）。提交以实际执行 `git commit` 操作者自己的身份进行，即"提交者本人名义"——这是学术项目的要求，不能绕过。
+  - **强制机制**: `.claude/hooks/commit-msg` 是一个真正的 git `commit-msg` 钩子，会拒绝任何包含 "Co-Authored-By" 字样的提交——无论提交是 Claude Code 触发、学生本人还是协作者在终端手动执行。
+  - **首次克隆后必须运行一次**（`.git/hooks/` 不受版本控制，无法随仓库自动生效）:
+    ```bash
+    git config core.hooksPath .claude/hooks
+    ```
+  - 钩子只检查提交信息文本是否含 "Co-Authored-By"，不检查/不限制 git 提交者身份（`user.name`/`user.email`）——按上述规则这已经足够，不需要额外的身份白名单。
 
 ### ✓ 必须遵守
-- **提交信息格式**: `[类型]: 描述 (关键词)`
-  - **第一行（主题）:** `<tag>: <summary>`，使用祈使语气，不超过 72 个字符。
-    - **空行**
-    - **正文:** 使用 `-` 列出 2–5 条要点，描述具体完成的更改。每条要点应为一句简洁的句子，重点说明改了什么以及为什么改，而不是如何修改。
+- **提交信息格式**: 完整规则和示例见 [`.claude/templates/commit-message.txt`](templates/commit-message.txt)。核心规则：
+  - 主题行 `<类型>: <描述>`，祈使语气，不超过 72 个字符
+  - 空行后正文用 `-` 列出 2–5 条要点，说明改了什么、为什么改
+  - 类型选择顺序: `fix` → `feat` → `refactor` → `style` → `chore` → `docs` → `test` → `perf` → `ci` → 其他（如 `move`/`rename`/`wip`/`revert`）
 
-    **标签选择——按以下顺序检查:**
-    - `fix:` — 修复错误或故障行为
-    - `feat:` — 添加面向用户的新功能
-    - `refactor:` — 在不改变行为的情况下重构代码
-    - `style:` — 不改变逻辑的视觉、UI 或 CSS 更改
-    - `chore:` — 构建、工具、配置或依赖项更新
-    - `docs:` — 仅限文档更改
-    - `test:` — 添加或更新测试
-    - `perf:` — 性能改进
-    - `ci:` — CI/CD 流水线更改
-    - 如果以上标签均不适用，请选择能够准确描述更改且最具代表性的标签（例如 `move:`、`rename:`、`wip:`、`revert:`）。
-   
-- **分支命名**:
-  - Feature: `feat/user-auth-system`
-  - Bugfix: `bugfix/env-loading-issue`
-  - Docs: `docs/architecture-guide`
-  - Never push to `main` directly — always use PR
+- **分支命名**（前缀与提交类型一致，避免两套体系）:
+  - `feat/user-auth-system`
+  - `fix/env-loading-issue`
+  - `docs/architecture-guide`
+  - 禁止直接 push 到 `main` — 一律通过 PR
+
+## 回复规范
+
+**每次修改了文件后，回复中必须逐项说明**（不只是罗列改了哪些文件）：
+1. **解决的具体问题** — 这项修改针对什么问题/症状
+2. **可能改变的行为** — 这项修改会让什么行为发生变化（新增/移除功能、改变输出、改变默认值等）
+3. **如何验证** — 怎么确认这项修改确实生效（命令、测试步骤，或读哪个文件确认）
+
+多个改动可以合并成一张表或一份清单，但每一项都要覆盖这三点；不允许只写"已修改 xxx.md"而不说明以上内容。
 
 ## 代码风格与模式
 
@@ -46,7 +47,9 @@
 
 ## 错误处理与自学规则
 
-### 每次修复 bug 后的必做事项
+**适用范围**: 每次使用 Claude Code 进行代码生成 / 开发时都适用，尤其是 **debug（排查报错、修复异常行为）** 和 **重构（调整已有代码结构）** 这两类任务——这两类工作最容易反复踩同一个坑，也最容易发现值得记录的规则。
+
+### 每次修复 bug 或踩坑后的必做事项
 1. 立即在 `.claude/lessons.md` 中记录新条目
 2. 格式: `[日期] | 症状 | 规则 | 文件路径`
 3. 例子:
@@ -67,18 +70,7 @@
 
 ## 项目交付要求
 
-**截止日期**: 2026-10-25
-
-### 必须提交
-- GitHub 仓库（包含 SystemCode/ 和 Report/ 目录）
-- 项目报告 PDF
-- 2 个演示视频（推广 + 系统演示）
-- 成员属性文件
-
-### GitHub 规范
-- Branch protection on `main`
-- All commits tracked with clear messages
-- No direct pushes to main
+完整清单（截止日期、GitHub 仓库结构、报告、视频等）见根目录 [`CLAUDE.md`](../CLAUDE.md#交付要求截止-2026-10-25) — 避免两处维护同一份清单导致失步。
 
 ## 快捷命令
 
