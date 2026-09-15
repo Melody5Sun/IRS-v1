@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 
 from app.api.v1.routes import resumes as resumes_route
 from app.main import app
-from app.parsers.llm_resume_parser import LLMResumeParser, ResumeParsingError
+from app.parsers.llm_resume_parser import SYSTEM_PROMPT, LLMResumeParser, ResumeParsingError
 from app.parsers.resume_parser import ResumeParser
+from app.schemas.resume import ResumeDocument
 from app.services.resume_service import ResumeService
 
 client = TestClient(app)
@@ -62,7 +63,7 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
                     "country": "Singapore",
                 }
             ],
-            "skills": [{"name": "Python", "level": "advanced"}],
+            "skills": [{"name": "Python"}],
             "educations": [
                 {
                     "institution": "NUS",
@@ -89,9 +90,22 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
     assert body["visa_status"] == "student_pass"
     assert body["requires_sponsorship"] is True
     assert body["experiences"][0]["employment_type"] == "internship"
-    assert body["skills"][0]["level"] == "advanced"
+    assert body["skills"][0] == {"name": "Python"}
     assert body["educations"][0]["entry_type"] == "degree"
     assert body["research"][0]["title"] == "Federated Learning for Edge Devices"
+
+
+def test_system_prompt_covers_every_schema_field() -> None:
+    # schema 改了字段但忘了同步 prompt 时，LLM 就不会输出该字段，这里提前拦住
+    schema = ResumeDocument.model_json_schema()
+    models = [schema, *schema["$defs"].values()]
+    # requires_sponsorship 由程序推导，prompt 里明确禁止输出，不要求出现在 schema 描述里
+    fields = {key for model in models for key in model.get("properties", {})} - {
+        "requires_sponsorship"
+    }
+
+    missing = sorted(key for key in fields if f'"{key}"' not in SYSTEM_PROMPT)
+    assert missing == []
 
 
 def test_parse_resume_requires_sponsorship_false_for_citizen(

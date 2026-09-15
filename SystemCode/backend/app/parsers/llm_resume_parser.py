@@ -6,75 +6,51 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.schemas.resume import ResumeDocument
 
-SYSTEM_PROMPT = """你是一个简历解析助手。你会收到一份简历的纯文本内容，需要把它抽取成结构化 JSON。
+# prompt 用英文写：输出必须是英文，中文指令容易让模型把中文带进 JSON 值里
+SYSTEM_PROMPT = """You are a resume parser. Convert the resume text into ONE JSON object following the schema below. Output raw JSON only: no markdown, no comments, no extra text.
 
-严格要求：
-- 只输出一个 JSON 对象，不要输出任何解释性文字、Markdown 代码块标记或其他内容。
-- 字段名和取值范围必须严格遵守下面给出的 schema，不要新增或改名字段。
-- 简历里没有写、或者你判断不了的字段，一律留空（字符串填 null，数组填 []），带枚举取值的
-  字段（比如 visa_status/employment_type/skills[].level 等）判断不了就填 "not_stated"，
-  不要瞎猜或编造简历里没有的信息。
-- visa_status 只允许四个取值：
-  - singapore_citizen：简历明确写了新加坡公民/Singaporean/Singapore Citizen
-  - permanent_resident：简历明确写了新加坡永久居民/PR/Permanent Resident
-  - student_pass：简历明确写了持学生准证在读（Student Pass/Student's Pass）
-  - not_stated：简历没写，或者写的是需要雇主另外申请工作准证的情况（比如 Employment Pass/S Pass/需要 sponsorship）
-- educations 里如果某一条是短期交换/交流项目（exchange/study abroad），entry_type 填
-  "exchange"，degree 固定填 "not_applicable"；正常的学位项目 entry_type 填 "degree"。
-- 不要输出 requires_sponsorship 字段，这个字段由程序根据 visa_status 自动算出。
-- 所有字符串字段的值（姓名、机构名、技能名、summary/description 等自由文本）一律翻译/转写成英文再输出，
-  即使原始简历是中文或其他语言；枚举字段本来就是英文取值，不用再处理。
+Rules:
+1. No fabrication: use only what the resume states. If absent or unclear: "string|null" -> null, list -> [], enum -> "not_stated" (or "not_applicable" where listed), required "string" -> "".
+2. Be complete: read every section; keep every entry and every bullet point (tools, numbers, outcomes) without merging or shortening. Each item goes in exactly one section.
+3. English only: translate non-English text faithfully; use an organization's official English name, otherwise romanize. Keep emails, phones and URLs unchanged.
+4. Dates: "YYYY-MM", or "YYYY" if only the year is given. Ongoing -> end_date "present"; expected graduation -> that date.
+5. Use only schema keys; never output requires_sponsorship. Ignore content with no matching field (awards, GPA, coursework, activities, hobbies).
 
-JSON schema（字段名、结构、可选枚举值）：
+Schema (// explains the field):
 {
-  "name": "string | null",
-  "email": "string | null",
-  "phone": "string | null",
-  "visa_status": "singapore_citizen | student_pass | permanent_resident | not_stated",
-  "about": "string | null",
-  "experiences": [
-    {
-      "company": "string",
-      "title": "string",
-      "employment_type": "internship | full_time | part_time | contract | freelance | not_stated",
-      "start_date": "string | null",
-      "end_date": "string | null",
-      "description": "string",
-      "country": "string | null"
-    }
-  ],
-  "projects": [
-    {"title": "string", "summary": "string", "technologies": ["string"], "role": "string | null"}
-  ],
-  "research": [
-    {
-      "title": "string",
-      "institution": "string | null",
-      "summary": "string",
-      "start_date": "string | null",
-      "end_date": "string | null"
-    }
-  ],
-  "skills": [
-    {"name": "string", "level": "beginner | intermediate | advanced | expert | not_stated"}
-  ],
-  "educations": [
-    {
-      "institution": "string",
-      "entry_type": "degree | exchange",
-      "degree": "bachelor | master | phd | diploma | not_applicable",
-      "major": "string | null",
-      "start_date": "string | null",
-      "end_date": "string | null",
-      "country": "string | null"
-    }
-  ],
-  "certificates": [
-    {"name": "string", "issuer": "string | null", "issue_date": "string | null", "expiry_date": "string | null"}
-  ],
-  "languages": [
-    {"name": "string", "level": "native | fluent | intermediate | basic | not_stated"}
-  ]
+  "name": "string|null", "email": "string|null", "phone": "string|null",
+  "visa_status": "singapore_citizen|permanent_resident|student_pass|not_stated",  // explicit mention only; EP, S Pass, needs sponsorship or unstated -> not_stated
+  "about": "string|null",  // the resume's own summary/objective; never write one
+  "experiences": [{  // employment: internship, full-time, part-time, contract, freelance
+    "company": "string", "title": "string",
+    "employment_type": "internship|full_time|part_time|contract|freelance|not_stated",  // explicit wording only; a plain job title -> not_stated
+    "start_date": "string|null", "end_date": "string|null",
+    "description": "string",  // all bullet points, joined with "\\n"
+    "country": "string|null"  // country of the stated work location
+  }],
+  "projects": [{  // personal, course, hackathon, open-source
+    "title": "string",
+    "summary": "string",  // what was built, how, results; all bullet points
+    "technologies": ["string"],  // named for this project
+    "role": "string|null"
+  }],
+  "research": [{  // academic research: thesis, lab/supervised research, research assistantship, publications
+    "title": "string",  // topic or paper title
+    "institution": "string|null",  // university, lab or institute
+    "summary": "string",  // problem, methods, results; publication venue if any
+    "start_date": "string|null", "end_date": "string|null"
+  }],
+  "skills": [{"name": "string"}],  // one skill per item (split "Python/Java"); from the skills section and technologies named elsewhere; no duplicates
+  "educations": [{  // diploma or above, plus exchange programmes; skip secondary school
+    "institution": "string",
+    "entry_type": "degree|exchange",  // exchange = exchange/study abroad without a degree
+    "degree": "bachelor|master|phd|diploma|not_applicable",  // exchange -> not_applicable
+    "major": "string|null",
+    "start_date": "string|null", "end_date": "string|null",
+    "country": "string|null"
+  }],
+  "certificates": [{"name": "string", "issuer": "string|null", "issue_date": "string|null", "expiry_date": "string|null"}],  // professional certifications
+  "languages": [{"name": "string", "level": "native|fluent|intermediate|basic|not_stated"}]  // human languages only; programming languages go in skills
 }
 """
 

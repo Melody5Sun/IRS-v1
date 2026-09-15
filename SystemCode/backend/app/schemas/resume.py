@@ -8,7 +8,6 @@ VisaStatus = Literal["singapore_citizen", "student_pass", "permanent_resident", 
 EmploymentType = Literal[
     "internship", "full_time", "part_time", "contract", "freelance", "not_stated"
 ]
-SkillLevel = Literal["beginner", "intermediate", "advanced", "expert", "not_stated"]
 LanguageLevel = Literal["native", "fluent", "intermediate", "basic", "not_stated"]
 # not_applicable 用于没有学位产出的条目，比如短期交换/交流经历
 Degree = Literal["bachelor", "master", "phd", "diploma", "not_applicable"]
@@ -31,7 +30,6 @@ class ResumeProfile(BaseModel):
 
 class Skill(BaseModel):
     name: str
-    level: SkillLevel = "not_stated"
 
 
 class Experience(BaseModel):
