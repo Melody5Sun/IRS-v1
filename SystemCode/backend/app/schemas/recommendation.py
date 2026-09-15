@@ -5,7 +5,7 @@ from app.schemas.resume import ResumeDocument
 
 
 class RecommendationRequest(BaseModel):
-    # 直接接收 /resumes/parse 的输出，前端不需要做任何转换
+    # 直接接收 /resumes/parse-pdf 的输出或 GET /profile 里的 resume，前端不需要做任何转换
     candidate: ResumeDocument
     jobs: list[JobAnalysisRequest] = Field(..., min_length=1)
 

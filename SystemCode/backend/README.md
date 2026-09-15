@@ -5,7 +5,8 @@ FastAPI backend for the IT CareerPilot IRS project.
 ## What is included
 
 - Health check endpoint
-- Resume parsing endpoint with a simple text-based parser
+- Resume PDF parsing endpoint (`POST /api/v1/resumes/parse-pdf`, LLM-based)
+- User profile and job-search constraints (`GET/PUT /api/v1/profile`, in-memory, single local user)
 - Job analysis endpoint with requirement extraction
 - Recommendation endpoint with hard-constraint checks and explainable scoring
 - Focused pytest tests for the initial API contract

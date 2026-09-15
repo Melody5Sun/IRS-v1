@@ -14,12 +14,11 @@ Rules:
 2. Be complete: read every section; keep every entry and every bullet point (tools, numbers, outcomes) without merging or shortening. Each item goes in exactly one section.
 3. English only: translate non-English text faithfully; use an organization's official English name, otherwise romanize. Keep emails, phones and URLs unchanged.
 4. Dates: "YYYY-MM", or "YYYY" if only the year is given. Ongoing -> end_date "present"; expected graduation -> that date.
-5. Use only schema keys; never output requires_sponsorship. Ignore content with no matching field (awards, GPA, coursework, activities, hobbies).
+5. Use only schema keys. Ignore content with no matching field (awards, GPA, coursework, activities, hobbies).
 
 Schema (// explains the field):
 {
   "name": "string|null", "email": "string|null", "phone": "string|null",
-  "visa_status": "singapore_citizen|permanent_resident|student_pass|not_stated",  // explicit mention only; EP, S Pass, needs sponsorship or unstated -> not_stated
   "about": "string|null",  // the resume's own summary/objective; never write one
   "experiences": [{  // employment: internship, full-time, part-time, contract, freelance
     "company": "string", "title": "string",
@@ -50,7 +49,7 @@ Schema (// explains the field):
     "country": "string|null"
   }],
   "certificates": [{"name": "string", "issuer": "string|null", "issue_date": "string|null", "expiry_date": "string|null"}],  // professional certifications
-  "languages": [{"name": "string", "level": "native|fluent|intermediate|basic|not_stated"}]  // human languages only; programming languages go in skills
+  "languages": ["string"]  // human languages only, one per item; programming languages go in skills
 }
 """
 

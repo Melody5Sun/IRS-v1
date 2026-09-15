@@ -7,7 +7,6 @@ class JobAnalysisRequest(BaseModel):
     company: str
     description: str = Field(..., min_length=1)
     location: str | None = None
-    visa_sponsorship: bool | None = None
     degree_required: str | None = None
     min_experience_years: float | None = None
 
