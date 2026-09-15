@@ -22,15 +22,15 @@ SYSTEM_PROMPT = """你是一个简历解析助手。你会收到一份简历的�
 - educations 里如果某一条是短期交换/交流项目（exchange/study abroad），entry_type 填
   "exchange"，degree 固定填 "not_applicable"；正常的学位项目 entry_type 填 "degree"。
 - 不要输出 requires_sponsorship 字段，这个字段由程序根据 visa_status 自动算出。
+- 所有字符串字段的值（姓名、机构名、技能名、summary/description 等自由文本）一律翻译/转写成英文再输出，
+  即使原始简历是中文或其他语言；枚举字段本来就是英文取值，不用再处理。
 
 JSON schema（字段名、结构、可选枚举值）：
 {
   "name": "string | null",
   "email": "string | null",
   "phone": "string | null",
-  "location": {"city": "string | null", "country": "string | null"},
   "visa_status": "singapore_citizen | student_pass | permanent_resident | not_stated",
-  "desired_position": "string | null",
   "about": "string | null",
   "experiences": [
     {
@@ -45,6 +45,15 @@ JSON schema（字段名、结构、可选枚举值）：
   ],
   "projects": [
     {"title": "string", "summary": "string", "technologies": ["string"], "role": "string | null"}
+  ],
+  "research": [
+    {
+      "title": "string",
+      "institution": "string | null",
+      "summary": "string",
+      "start_date": "string | null",
+      "end_date": "string | null"
+    }
   ],
   "skills": [
     {"name": "string", "level": "beginner | intermediate | advanced | expert | not_stated"}

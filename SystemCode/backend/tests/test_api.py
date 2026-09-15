@@ -41,9 +41,16 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
             "name": "Jane Tan",
             "email": "jane@example.com",
             "phone": "+65 9123 4567",
-            "location": {"city": "Singapore", "country": "Singapore"},
             "visa_status": "student_pass",
-            "desired_position": "Software Engineer Intern",
+            "research": [
+                {
+                    "title": "Federated Learning for Edge Devices",
+                    "institution": "NUS",
+                    "summary": "Studied communication-efficient aggregation strategies.",
+                    "start_date": "2025-01",
+                    "end_date": "2025-05",
+                }
+            ],
             "experiences": [
                 {
                     "company": "Acme",
@@ -84,6 +91,7 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
     assert body["experiences"][0]["employment_type"] == "internship"
     assert body["skills"][0]["level"] == "advanced"
     assert body["educations"][0]["entry_type"] == "degree"
+    assert body["research"][0]["title"] == "Federated Learning for Edge Devices"
 
 
 def test_parse_resume_requires_sponsorship_false_for_citizen(

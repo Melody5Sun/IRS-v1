@@ -29,11 +29,6 @@ class ResumeProfile(BaseModel):
     work_authorization: str | None = None
 
 
-class Location(BaseModel):
-    city: str | None = None
-    country: str | None = None
-
-
 class Skill(BaseModel):
     name: str
     level: SkillLevel = "not_stated"
@@ -54,6 +49,14 @@ class Project(BaseModel):
     summary: str = ""
     technologies: list[str] = Field(default_factory=list)
     role: str | None = None
+
+
+class Research(BaseModel):
+    title: str
+    institution: str | None = None
+    summary: str = ""
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 class Education(BaseModel):
@@ -82,14 +85,13 @@ class ResumeDocument(BaseModel):
     name: str | None = None
     email: str | None = None
     phone: str | None = None
-    location: Location | None = None
     visa_status: VisaStatus = "not_stated"
     # 由 visa_status 程序化推出，不接受 LLM 直接填写，避免跟 visa_status 自相矛盾
     requires_sponsorship: bool = True
-    desired_position: str | None = None
     about: str | None = None
     experiences: list[Experience] = Field(default_factory=list)
     projects: list[Project] = Field(default_factory=list)
+    research: list[Research] = Field(default_factory=list)
     skills: list[Skill] = Field(default_factory=list)
     educations: list[Education] = Field(default_factory=list)
     certificates: list[Certificate] = Field(default_factory=list)
