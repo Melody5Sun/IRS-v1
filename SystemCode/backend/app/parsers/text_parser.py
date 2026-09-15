@@ -27,7 +27,8 @@ def extract_skills(text: str) -> list[str]:
     skills = [
         skill
         for skill in KNOWN_SKILLS
-        if re.search(rf"(?<![\w+#.-]){re.escape(skill)}(?![\w+#.-])", normalized_text)
+        # 后面紧跟的 "." 只有接着字母数字时才算词的一部分（如 node.js），句末的句号不能挡住匹配
+        if re.search(rf"(?<![\w+#.-]){re.escape(skill)}(?![\w+#-]|\.\w)", normalized_text)
     ]
     return sorted(skills)
 

@@ -8,6 +8,8 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-15] | JD 写 "Build APIs with Python, FastAPI and SQL." 时 sql 没被识别成必需技能；老测试用的就是这句话，但没断言 sql，所以一直没发现 | 技能词边界正则的后向断言不能直接排除 "."，否则位于句末的技能全部漏掉；只在 "." 后面还跟着字母数字时才算词的一部分（`(?![\w+#-]|\.\w)`）。写测试时要对抽取结果做完整断言（matched 和 missing 都要查），不能只看排序 | SystemCode/backend/app/parsers/text_parser.py
+
 [2026-09-15] | 简历解析接 Gemini 时把真实 API Key 误粘贴进了 `.env.example`（该文件不在 `.gitignore` 里，是要提交的模板） | 真实密钥只能放进 `.env`（已被 `.gitignore` 排除）；`.env.example` 永远只放占位注释，不放真实值；一旦真实密钥出现在了会被提交或会进入对话记录的地方，就当作已泄露处理——去申请方（如 Google AI Studio）重新生成一个 | .env.example, SystemCode/backend/.env
 [2026-09-15] | 用 `gemini-2.5-flash` 调 Gemini 的 OpenAI 兼容接口报 404 "no longer available to new users" | Gemini 免费模型名会随时间下线/更替，接入时以报错信息里 Google 给出的替代模型名为准（当前是 `gemini-3.6-flash`），不要死记某个具体型号名 | SystemCode/backend/.env, .env.example
 [2026-09-15] | 本机没有系统级 Python（`python`/`py` 只是 Windows Store 空壳，运行即 exit 49 无输出） | 用 `uv`（已装在 `~/.local/bin`）自建环境：`uv python install 3.12` 下载解释器 + `uv venv --python 3.12 .venv` + `uv pip install --python .venv -r requirements.txt`，不用等系统装 Python | SystemCode/backend
