@@ -1,9 +1,10 @@
 # IRS Project Primer
 
 ## ⏭️ 下一步
-- [ ] 架构设计与技术栈确定（关键路径项）
+- [ ] 架构设计与技术栈确定（关键路径项，LLM 供应商已确定见下）
 - [ ] 第一批核心模块代码框架实现
 - [ ] 更新 `launch.json`（待代码就位后填入真实启动命令）
+- [ ] 各自机器上在 `.env` 里填入真实的 Gemini `LLM_API_KEY` 才能跑通简历解析（`.env.example` 已给出模板）
 
 ## 📊 项目阶段
 **当前**: 第 0 阶段 — 配置系统建立，等待代码实现
@@ -13,6 +14,7 @@
 - IRS-Project-Proposal-V1-CN.docx 最终版提案确定
 - proposal-assets/ 目录整理（架构图、用户流程图、人设研究）
 - `.claude/` 配置系统建立（本次任务）
+- 简历解析 LLM 供应商确定为 Google Gemini 免费额度（OpenAI 兼容接口，`app/parsers/llm_resume_parser.py` 代码零改动，仅需配置 `.env`）
 
 ## 📖 需要先读
 - [CLAUDE.md](../CLAUDE.md) — 项目完整指南
