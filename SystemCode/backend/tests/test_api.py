@@ -1,3 +1,4 @@
+import copy
 import json
 
 import pytest
@@ -8,11 +9,57 @@ from app.main import app
 from app.matching.scorer import calculate_experience_years
 from app.parsers.llm_resume_parser import SYSTEM_PROMPT, LLMResumeParser, ResumeParsingError
 from app.parsers.resume_parser import ResumeParser
-from app.schemas.resume import Experience, ResumeDocument
+from app.schemas.resume import Experience, ParsedResume
 from app.services.profile_service import profile_service
 from app.services.resume_service import ResumeService
 
 client = TestClient(app)
+
+# 用户手动提交时的完整画像：选填字段（role、major、expiry_date）和可空列表（research）故意留空
+COMPLETE_PROFILE = {
+    "resume": {
+        "name": "Jane Tan",
+        "email": "jane@example.com",
+        "phone": "+65 9123 4567",
+        "experiences": [
+            {
+                "company": "Acme",
+                "title": "Backend Intern",
+                "employment_type": "internship",
+                "start_date": "2024-01",
+                "end_date": "2024-12",
+                "description": "Built APIs with FastAPI.",
+                "country": "Singapore",
+            }
+        ],
+        "projects": [
+            {"title": "Job Matcher", "summary": "Matching web app.", "technologies": ["Python"], "role": None}
+        ],
+        "research": [],
+        "skills": ["Python", "SQL"],
+        "educations": [
+            {
+                "institution": "NUS",
+                "entry_type": "exchange",
+                "degree": "not_applicable",
+                "major": None,
+                "start_date": "2024-09",
+                "end_date": "2024-12",
+                "country": "Singapore",
+            }
+        ],
+        "certificates": [
+            {"name": "AWS Cloud Practitioner", "issuer": "AWS", "issue_date": "2025-03", "expiry_date": None}
+        ],
+        "languages": ["English"],
+    },
+    "constraints": {
+        "target_roles": ["Backend Engineer"],
+        "target_industries": ["Fintech"],
+        "work_modes": ["hybrid", "remote"],
+        "notes": "Available from 2026-06.",
+    },
+}
 
 
 class FakeChatClient:
@@ -115,6 +162,7 @@ def test_parse_resume_pdf_extracts_structured_profile(monkeypatch: pytest.Monkey
                 }
             ],
             "languages": ["English", "Mandarin"],
+            "about": "Aspiring backend engineer.",
         }
     )
     _use_fake_llm(monkeypatch, [llm_response])
@@ -127,11 +175,13 @@ def test_parse_resume_pdf_extracts_structured_profile(monkeypatch: pytest.Monkey
     assert body["educations"][0]["entry_type"] == "degree"
     assert body["research"][0]["title"] == "Federated Learning for Edge Devices"
     assert body["languages"] == ["English", "Mandarin"]
+    # about 只合并进画像的 notes，不出现在简历响应里
+    assert "about" not in body
 
 
 def test_system_prompt_covers_every_schema_field() -> None:
     # schema 改了字段但忘了同步 prompt 时，LLM 就不会输出该字段，这里提前拦住
-    schema = ResumeDocument.model_json_schema()
+    schema = ParsedResume.model_json_schema()
     models = [schema, *schema["$defs"].values()]
     fields = {key for model in models for key in model.get("properties", {})}
 
@@ -166,49 +216,73 @@ def test_profile_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(profile_service, "profile", None)
     _use_fake_llm(
         monkeypatch,
-        [json.dumps({"name": "Jane Tan"}), json.dumps({"name": "Jane Tan v2"})],
+        [
+            json.dumps({"name": "Jane Tan", "about": "Aspiring backend engineer."}),
+            json.dumps({"name": "Jane Tan v2", "about": "Updated summary."}),
+        ],
     )
 
     assert client.get("/api/v1/profile").status_code == 404
 
-    # 上传 PDF 后解析结果自动存入画像，约束为空
+    # 上传 PDF 后解析结果自动存入画像，简历里的 about 预填进 notes
     _upload_pdf("Jane Tan")
     saved = client.get("/api/v1/profile").json()
     assert saved["resume"]["name"] == "Jane Tan"
+    assert "about" not in saved["resume"]
     assert saved["constraints"] == {
         "target_roles": [],
         "target_industries": [],
         "work_modes": [],
-        "notes": "",
+        "notes": "Aspiring backend engineer.",
     }
 
-    # 用户在解析结果基础上修改画像并填写求职约束
-    saved["resume"]["skills"] = ["Python", "SQL"]
-    saved["constraints"] = {
-        "target_roles": ["Backend Engineer", "Data Engineer"],
-        "target_industries": ["Fintech"],
-        "work_modes": ["hybrid", "remote"],
-        "notes": "Available from 2026-01.",
-    }
-    response = client.put("/api/v1/profile", json=saved)
+    # 解析结果不完整，原样提交会被拒；补全后才能保存
+    assert client.put("/api/v1/profile", json=saved).status_code == 422
+    response = client.put("/api/v1/profile", json=COMPLETE_PROFILE)
     assert response.status_code == 200
-    assert client.get("/api/v1/profile").json() == saved
+    assert client.get("/api/v1/profile").json() == COMPLETE_PROFILE
 
-    # 重新上传简历：画像被替换，已填写的约束保留
+    # 重新上传简历：画像被替换；约束保留，用户写过的 notes 不被新 about 覆盖
     _upload_pdf("Jane Tan v2")
     reuploaded = client.get("/api/v1/profile").json()
     assert reuploaded["resume"]["name"] == "Jane Tan v2"
     assert reuploaded["resume"]["skills"] == []
-    assert reuploaded["constraints"] == saved["constraints"]
+    assert reuploaded["constraints"] == COMPLETE_PROFILE["constraints"]
+
+
+def test_profile_rejects_empty_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(profile_service, "profile", None)
+    profile = copy.deepcopy(COMPLETE_PROFILE)
+    resume = profile["resume"]
+    resume["email"] = None
+    resume["experiences"][0]["employment_type"] = "not_stated"
+    resume["experiences"][0]["country"] = " "
+    resume["skills"] = []
+    resume["languages"] = [""]
+    profile["constraints"]["work_modes"] = []
+    # notes 选填，留空不报错
+    profile["constraints"]["notes"] = ""
+
+    response = client.put("/api/v1/profile", json=profile)
+
+    assert response.status_code == 422
+    assert [error["loc"] for error in response.json()["detail"]] == [
+        ["body", "resume", "email"],
+        ["body", "resume", "experiences", 0, "employment_type"],
+        ["body", "resume", "experiences", 0, "country"],
+        ["body", "resume", "skills"],
+        ["body", "resume", "languages", 0],
+        ["body", "constraints", "work_modes"],
+    ]
+    assert profile_service.profile is None
 
 
 def test_profile_rejects_unknown_work_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(profile_service, "profile", None)
+    profile = copy.deepcopy(COMPLETE_PROFILE)
+    profile["constraints"]["work_modes"] = ["office"]
 
-    response = client.put(
-        "/api/v1/profile",
-        json={"resume": {"name": "Jane Tan"}, "constraints": {"work_modes": ["office"]}},
-    )
+    response = client.put("/api/v1/profile", json=profile)
 
     assert response.status_code == 422
     assert profile_service.profile is None

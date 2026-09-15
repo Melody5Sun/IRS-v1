@@ -18,9 +18,11 @@
 - 后端 FastAPI 骨架（`SystemCode/backend/`）：health / resumes / jobs / recommendations 四组路由
 - 简历解析：只保留 `POST /resumes/parse-pdf`（pdfminer 提取文本，纯文本的 `/parse` 已删除），调用 Gemini（OpenAI 兼容接口）抽取成结构化 `ResumeDocument`，校验失败自动重试一次
 - 简历 schema：
-  - 包含 name/email/phone、about、experiences、projects、research、skills（`list[str]`）、educations、certificates、languages（`list[str]`）
+  - 包含 name/email/phone、experiences、projects、research、skills（`list[str]`）、educations、certificates、languages（`list[str]`）
+  - about 已合并进求职约束的 notes：LLM 仍抽取 about（`ParsedResume`），上传时若 notes 为空就预填进去
   - 已移出：location、desired_position（改到求职约束）、skill level、language level、visa_status/requires_sponsorship（签证相关全部删除，岗位侧 `visa_sponsorship` 和签证硬约束也一并删除）
 - 用户画像 + 求职约束（本地部署，单用户）：`parse-pdf` 解析后自动存入画像 → `GET /profile` 读取 → 用户修改画像、填写求职约束（target_roles / target_industries / work_modes: onsite|hybrid|remote / notes，均可多选）→ `PUT /profile` 整体保存；重新上传简历只替换画像，保留约束
+  - PUT 时除选填字段（notes、expiry_date、major、role）外都不能为空（null、空串、空列表、not_stated），experiences/projects/research/certificates 可以一条都没有；返回 422，错误里的 loc 指出具体字段，格式与 FastAPI 自带校验错误一致
 - `SYSTEM_PROMPT` 重写为英文：逐字段说明、禁止编造、强制英文输出，约 838 token
 - 测试 `test_system_prompt_covers_every_schema_field`：schema 字段和 prompt 不同步时直接失败
 - 推荐基线：技能关键词交集打分 + 硬约束（经验年限）

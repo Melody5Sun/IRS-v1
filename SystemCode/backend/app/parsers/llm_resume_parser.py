@@ -4,7 +4,7 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from app.core.config import settings
-from app.schemas.resume import ResumeDocument
+from app.schemas.resume import ParsedResume
 
 # prompt 用英文写：输出必须是英文，中文指令容易让模型把中文带进 JSON 值里
 SYSTEM_PROMPT = """You are a resume parser. Convert the resume text into ONE JSON object following the schema below. Output raw JSON only: no markdown, no comments, no extra text.
@@ -89,21 +89,21 @@ class OpenAICompatibleClient:
 
 
 class ResumeParsingError(RuntimeError):
-    """LLM 两次尝试后仍未能返回合法的 ResumeDocument JSON。"""
+    """LLM 两次尝试后仍未能返回合法的 ParsedResume JSON。"""
 
 
 class LLMResumeParser:
     def __init__(self, client: ChatClient | None = None) -> None:
         self.client = client or OpenAICompatibleClient()
 
-    def parse(self, text: str) -> ResumeDocument:
+    def parse(self, text: str) -> ParsedResume:
         raw = self.client.complete(system_prompt=SYSTEM_PROMPT, user_prompt=text)
         try:
-            return ResumeDocument.model_validate_json(raw)
+            return ParsedResume.model_validate_json(raw)
         except (json.JSONDecodeError, ValidationError) as error:
             return self._retry(text, error)
 
-    def _retry(self, text: str, error: Exception) -> ResumeDocument:
+    def _retry(self, text: str, error: Exception) -> ParsedResume:
         retry_prompt = (
             f"{text}\n\n"
             f"上一次的输出没有通过校验，错误信息：{error}\n"
@@ -111,7 +111,7 @@ class LLMResumeParser:
         )
         raw = self.client.complete(system_prompt=SYSTEM_PROMPT, user_prompt=retry_prompt)
         try:
-            return ResumeDocument.model_validate_json(raw)
+            return ParsedResume.model_validate_json(raw)
         except (json.JSONDecodeError, ValidationError) as retry_error:
             raise ResumeParsingError(
                 f"LLM 重试后仍未能返回合法的简历 JSON：{retry_error}"

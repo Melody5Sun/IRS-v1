@@ -24,7 +24,8 @@ def parse_resume_pdf(file: UploadFile = File(...)) -> ResumeDocument:
             status_code=422, detail="无法从 PDF 中提取文本，可能是扫描件图片版 PDF"
         )
 
-    resume = resume_service.parse_text(text)
-    # 解析结果先存入画像，用户之后通过 GET /profile 读取并修改
-    profile_service.save_resume(resume)
-    return resume
+    parsed = resume_service.parse_text(text)
+    # 解析结果先存入画像（about 合并进 notes），用户之后通过 GET /profile 读取并修改
+    profile_service.save_resume(parsed)
+    # response_model 是 ResumeDocument，响应里不带 about
+    return parsed

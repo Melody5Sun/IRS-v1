@@ -12,7 +12,7 @@ class JobSearchConstraints(BaseModel):
     target_roles: list[str] = Field(default_factory=list)
     target_industries: list[str] = Field(default_factory=list)
     work_modes: list[WorkMode] = Field(default_factory=list)
-    # 补充说明
+    # 补充说明（选填）；上传简历时用简历里的自我介绍预填
     notes: str = ""
 
 

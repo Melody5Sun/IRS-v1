@@ -56,7 +56,6 @@ class ResumeDocument(BaseModel):
     name: str | None = None
     email: str | None = None
     phone: str | None = None
-    about: str | None = None
     experiences: list[Experience] = Field(default_factory=list)
     projects: list[Project] = Field(default_factory=list)
     research: list[Research] = Field(default_factory=list)
@@ -64,3 +63,9 @@ class ResumeDocument(BaseModel):
     educations: list[Education] = Field(default_factory=list)
     certificates: list[Certificate] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
+
+
+class ParsedResume(ResumeDocument):
+    """LLM 解析 PDF 的输出：比画像多一个 about，存入画像时合并进求职约束的 notes。"""
+
+    about: str | None = None
