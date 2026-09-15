@@ -12,6 +12,23 @@
       "Read",
       "Glob",
       "Grep"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Bash(cat .env*)",
+      "Bash(cat *.env*)",
+      "Bash(type .env*)",
+      "Bash(more .env*)",
+      "Bash(Get-Content .env*)",
+      "Bash(Get-Content *.env*)",
+      "Bash(env)",
+      "Bash(env *)",
+      "Bash(printenv*)",
+      "Bash(Get-ChildItem Env:*)",
+      "Bash(Get-ChildItem env:*)"
     ]
   }
 }

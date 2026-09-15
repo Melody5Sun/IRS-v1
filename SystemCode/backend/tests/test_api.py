@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 
 from app.api.v1.routes import resumes as resumes_route
 from app.main import app
-from app.parsers.llm_resume_parser import LLMResumeParser, ResumeParsingError
+from app.parsers.llm_resume_parser import SYSTEM_PROMPT, LLMResumeParser, ResumeParsingError
 from app.parsers.resume_parser import ResumeParser
+from app.schemas.resume import ResumeDocument
 from app.services.resume_service import ResumeService
 
 client = TestClient(app)
@@ -41,9 +42,16 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
             "name": "Jane Tan",
             "email": "jane@example.com",
             "phone": "+65 9123 4567",
-            "location": {"city": "Singapore", "country": "Singapore"},
             "visa_status": "student_pass",
-            "desired_position": "Software Engineer Intern",
+            "research": [
+                {
+                    "title": "Federated Learning for Edge Devices",
+                    "institution": "NUS",
+                    "summary": "Studied communication-efficient aggregation strategies.",
+                    "start_date": "2025-01",
+                    "end_date": "2025-05",
+                }
+            ],
             "experiences": [
                 {
                     "company": "Acme",
@@ -55,7 +63,7 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
                     "country": "Singapore",
                 }
             ],
-            "skills": [{"name": "Python", "level": "advanced"}],
+            "skills": ["Python"],
             "educations": [
                 {
                     "institution": "NUS",
@@ -82,8 +90,22 @@ def test_parse_resume_extracts_structured_profile(monkeypatch: pytest.MonkeyPatc
     assert body["visa_status"] == "student_pass"
     assert body["requires_sponsorship"] is True
     assert body["experiences"][0]["employment_type"] == "internship"
-    assert body["skills"][0]["level"] == "advanced"
+    assert body["skills"] == ["Python"]
     assert body["educations"][0]["entry_type"] == "degree"
+    assert body["research"][0]["title"] == "Federated Learning for Edge Devices"
+
+
+def test_system_prompt_covers_every_schema_field() -> None:
+    # schema 改了字段但忘了同步 prompt 时，LLM 就不会输出该字段，这里提前拦住
+    schema = ResumeDocument.model_json_schema()
+    models = [schema, *schema["$defs"].values()]
+    # requires_sponsorship 由程序推导，prompt 里明确禁止输出，不要求出现在 schema 描述里
+    fields = {key for model in models for key in model.get("properties", {})} - {
+        "requires_sponsorship"
+    }
+
+    missing = sorted(key for key in fields if f'"{key}"' not in SYSTEM_PROMPT)
+    assert missing == []
 
 
 def test_parse_resume_requires_sponsorship_false_for_citizen(
@@ -114,6 +136,59 @@ def test_parse_resume_raises_after_second_failure(monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(ResumeParsingError):
         client.post("/api/v1/resumes/parse", json={"text": "some resume text"})
+
+
+def _build_minimal_pdf(text: str) -> bytes:
+    """手工拼一个最小的单页 PDF，避免为了测试引入新依赖。"""
+    content = f"BT /F1 12 Tf 10 100 Td ({text}) Tj ET".encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >>"
+        b" /MediaBox [0 0 200 200] /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(content), content),
+    ]
+
+    body = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(body))
+        body += b"%d 0 obj\n%s\nendobj\n" % (index, obj)
+
+    xref_offset = len(body)
+    body += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    for offset in offsets:
+        body += b"%010d 00000 n \n" % offset
+    body += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF" % (
+        len(objects) + 1,
+        xref_offset,
+    )
+    return bytes(body)
+
+
+def test_parse_resume_pdf_extracts_structured_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    llm_response = json.dumps({"name": "PDF Candidate", "visa_status": "student_pass"})
+    _use_fake_llm(monkeypatch, [llm_response])
+
+    pdf_bytes = _build_minimal_pdf("PDF Candidate")
+
+    response = client.post(
+        "/api/v1/resumes/parse-pdf",
+        files={"file": ("resume.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "PDF Candidate"
+
+
+def test_parse_resume_pdf_rejects_non_pdf_upload() -> None:
+    response = client.post(
+        "/api/v1/resumes/parse-pdf",
+        files={"file": ("resume.txt", b"not a pdf", "text/plain")},
+    )
+
+    assert response.status_code == 400
 
 
 def test_recommendations_rank_matching_job_first() -> None:

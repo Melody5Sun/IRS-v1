@@ -8,7 +8,6 @@ VisaStatus = Literal["singapore_citizen", "student_pass", "permanent_resident", 
 EmploymentType = Literal[
     "internship", "full_time", "part_time", "contract", "freelance", "not_stated"
 ]
-SkillLevel = Literal["beginner", "intermediate", "advanced", "expert", "not_stated"]
 LanguageLevel = Literal["native", "fluent", "intermediate", "basic", "not_stated"]
 # not_applicable 用于没有学位产出的条目，比如短期交换/交流经历
 Degree = Literal["bachelor", "master", "phd", "diploma", "not_applicable"]
@@ -29,16 +28,6 @@ class ResumeProfile(BaseModel):
     work_authorization: str | None = None
 
 
-class Location(BaseModel):
-    city: str | None = None
-    country: str | None = None
-
-
-class Skill(BaseModel):
-    name: str
-    level: SkillLevel = "not_stated"
-
-
 class Experience(BaseModel):
     company: str
     title: str
@@ -54,6 +43,14 @@ class Project(BaseModel):
     summary: str = ""
     technologies: list[str] = Field(default_factory=list)
     role: str | None = None
+
+
+class Research(BaseModel):
+    title: str
+    institution: str | None = None
+    summary: str = ""
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 class Education(BaseModel):
@@ -82,15 +79,14 @@ class ResumeDocument(BaseModel):
     name: str | None = None
     email: str | None = None
     phone: str | None = None
-    location: Location | None = None
     visa_status: VisaStatus = "not_stated"
     # 由 visa_status 程序化推出，不接受 LLM 直接填写，避免跟 visa_status 自相矛盾
     requires_sponsorship: bool = True
-    desired_position: str | None = None
     about: str | None = None
     experiences: list[Experience] = Field(default_factory=list)
     projects: list[Project] = Field(default_factory=list)
-    skills: list[Skill] = Field(default_factory=list)
+    research: list[Research] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
     educations: list[Education] = Field(default_factory=list)
     certificates: list[Certificate] = Field(default_factory=list)
     languages: list[Language] = Field(default_factory=list)
