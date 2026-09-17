@@ -1,7 +1,7 @@
 import json
 
 from app.core.config import settings
-from app.parsers.llm_resume_parser import ChatClient, OpenAICompatibleClient
+from app.services.openai_client_service import ChatClient, OpenAICompatibleClient
 from app.schemas.job import JobPosting, JobRequirementDocument
 
 
