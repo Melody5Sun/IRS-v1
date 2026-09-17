@@ -38,8 +38,8 @@ IRS-v1/
 - [ ] 成员属性文件
 
 ## 开发环境
-> 代码实现尚未开始，此部分待架构确定后补充启动命令。
-> 参见 [.claude/primer.md](.claude/primer.md) 获取当前进度。
+> 后端已用 FastAPI 搭建，启动命令见 [.claude/primer.md](.claude/primer.md#-快速启动)。
+> 前端技术栈已定为 **React + TypeScript**，项目尚未搭建，目前 `SystemCode/frontend/` 下只有一个未接后端的静态 demo HTML。
 
 ## Claude Code 使用说明
 - AI 工作流规则详见 [.claude/CLAUDE.md](.claude/CLAUDE.md)
