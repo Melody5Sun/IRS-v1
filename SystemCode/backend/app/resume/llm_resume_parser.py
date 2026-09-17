@@ -50,6 +50,67 @@ Schema (// explains the field):
   "certificates": [{"name": "string", "issuer": "string|null", "issue_date": "string|null", "expiry_date": "string|null"}],  // professional certifications
   "languages": ["string"]  // human languages only, one per item; programming languages go in skills
 }
+
+Example
+Resume text:
+Wei Ming Tan
+wei.ming.tan@example.com | +65 9123 4567
+
+ABOUT
+Final-year Computer Science student passionate about backend systems and cloud infrastructure.
+
+EDUCATION
+National University of Singapore
+Bachelor of Computing, Computer Science
+Aug 2022 - May 2026
+
+EXPERIENCE
+Backend Engineering Intern, Acme Technologies
+May 2025 - Aug 2025
+- Built REST APIs in Python/FastAPI serving 10k+ daily requests
+- Migrated batch jobs from cron to Airflow, cutting failure rate by 30%
+
+PROJECTS
+Campus Marketplace (Personal Project)
+- Full-stack marketplace app using React, Node.js and PostgreSQL
+- Implemented JWT auth and Stripe checkout
+
+SKILLS
+Python, FastAPI, React, PostgreSQL, Docker, Git
+
+CERTIFICATES
+AWS Certified Cloud Practitioner, Amazon Web Services, 2024
+
+LANGUAGES
+English, Mandarin
+
+Expected JSON:
+{
+  "name": "Wei Ming Tan", "email": "wei.ming.tan@example.com", "phone": "+65 9123 4567",
+  "about": "Final-year Computer Science student passionate about backend systems and cloud infrastructure.",
+  "experiences": [{
+    "company": "Acme Technologies", "title": "Backend Engineering Intern",
+    "employment_type": "internship", "start_date": "2025-05", "end_date": "2025-08",
+    "description": "Built REST APIs in Python/FastAPI serving 10k+ daily requests\\nMigrated batch jobs from cron to Airflow, cutting failure rate by 30%",
+    "country": null
+  }],
+  "projects": [{
+    "title": "Campus Marketplace",
+    "summary": "Full-stack marketplace app using React, Node.js and PostgreSQL\\nImplemented JWT auth and Stripe checkout",
+    "technologies": ["React", "Node.js", "PostgreSQL"], "role": null
+  }],
+  "research": [],
+  "skills": ["Python", "FastAPI", "React", "PostgreSQL", "Docker", "Git"],
+  "educations": [{
+    "institution": "National University of Singapore", "entry_type": "degree", "degree": "bachelor",
+    "major": "Computer Science", "start_date": "2022-08", "end_date": "2026-05", "country": null
+  }],
+  "certificates": [{
+    "name": "AWS Certified Cloud Practitioner", "issuer": "Amazon Web Services",
+    "issue_date": "2024", "expiry_date": null
+  }],
+  "languages": ["English", "Mandarin"]
+}
 """
 
 
