@@ -8,6 +8,7 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-17] | 简历上传一直报 `LLM 未配置`，用户确认已经配置了 `LLM_API_KEY` 等变量，但报错不变 | `.env` 被放在了仓库根目录，而 `config.py` 里 `BACKEND_ROOT = Path(__file__).resolve().parents[2]` 固定只读 `SystemCode/backend/.env`，不认系统环境变量也不认根目录的 `.env`；用 `mv` 把文件挪到 `SystemCode/backend/.env`（不读取/打印文件内容）即可，不用改代码 | SystemCode/backend/.env, SystemCode/backend/app/core/config.py
 [2026-09-17] | `gh pr merge <N> --auto --merge` 在仓库关闭了 `allow_auto_merge` 设置时不报错也不等待，如果此刻已满足合并条件就直接静默合并；随后 `gh pr merge` 命令切换本地工作目录回 base 分支，但没有 pull，导致本地文件短暂显示成合并前的旧内容（容易误判为改动丢失） | 判断 PR 是否已合并用 `gh pr view <N> --json state,mergedAt`，不要看 `--auto` 命令有没有报错；合并后如果本地分支被切回 base，先 `git pull` 同步再继续操作 | GitHub PR 流程
 [2026-09-17] | Windows 新克隆仓库执行 `commit-msg` 钩子时报 `grep: command not found`，提交检查被跳过 | 钩子的核心校验应使用 POSIX shell 内建的 `while` 和 `case`，避免依赖目标机器未必提供的 `grep` | .claude/hooks/commit-msg
 [2026-09-17] | 扩充技能同义词后，普通的 `API`/`APIs` 被识别成独立的 `api development` 技能，改变了既有推荐结果 | 技能别名应采用能明确代表能力的短语，避免把通用技术名词直接提升为额外技能；用完整回归测试检查 matched/missing 列表 | SystemCode/backend/app/parsers/skill_lexicon.py

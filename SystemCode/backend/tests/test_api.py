@@ -57,6 +57,7 @@ COMPLETE_PROFILE = {
         "target_roles": ["Backend Developer"],
         "target_industries": ["Financial Technology (FinTech)"],
         "work_modes": ["hybrid", "remote"],
+        "target_employment_types": ["full_time"],
         "notes": "Available from 2026-06.",
     },
 }
@@ -233,6 +234,7 @@ def test_profile_flow(monkeypatch: pytest.MonkeyPatch) -> None:
         "target_roles": [],
         "target_industries": [],
         "work_modes": [],
+        "target_employment_types": [],
         "notes": "Aspiring backend engineer.",
     }
 
@@ -248,6 +250,29 @@ def test_profile_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     assert reuploaded["resume"]["name"] == "Jane Tan v2"
     assert reuploaded["resume"]["skills"] == []
     assert reuploaded["constraints"] == COMPLETE_PROFILE["constraints"]
+
+
+def test_patch_profile_merges_partial_update(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(profile_service, "profile", None)
+
+    # 还没有画像时，PATCH 和 GET 一样返回 404
+    assert client.patch("/api/v1/profile", json={"constraints": {"notes": "hi"}}).status_code == 404
+
+    client.put("/api/v1/profile", json=COMPLETE_PROFILE)
+
+    # 只传 constraints.notes，其余字段（包括 resume、constraints 里的其他字段）原样保留
+    response = client.patch("/api/v1/profile", json={"constraints": {"notes": "只改这一个字段"}})
+    assert response.status_code == 200
+    patched = response.json()
+    assert patched["constraints"]["notes"] == "只改这一个字段"
+    assert patched["constraints"]["target_roles"] == COMPLETE_PROFILE["constraints"]["target_roles"]
+    assert patched["resume"] == COMPLETE_PROFILE["resume"]
+    assert client.get("/api/v1/profile").json() == patched
+
+    # 非法枚举值仍然被拒绝（422），画像不受影响
+    invalid_response = client.patch("/api/v1/profile", json={"constraints": {"work_modes": ["office"]}})
+    assert invalid_response.status_code == 422
+    assert client.get("/api/v1/profile").json() == patched
 
 
 def test_profile_rejects_empty_fields(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -281,6 +306,17 @@ def test_profile_rejects_unknown_work_mode(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(profile_service, "profile", None)
     profile = copy.deepcopy(COMPLETE_PROFILE)
     profile["constraints"]["work_modes"] = ["office"]
+
+    response = client.put("/api/v1/profile", json=profile)
+
+    assert response.status_code == 422
+    assert profile_service.profile is None
+
+
+def test_profile_rejects_unknown_employment_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(profile_service, "profile", None)
+    profile = copy.deepcopy(COMPLETE_PROFILE)
+    profile["constraints"]["target_employment_types"] = ["part_time"]
 
     response = client.put("/api/v1/profile", json=profile)
 

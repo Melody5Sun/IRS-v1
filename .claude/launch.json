@@ -7,6 +7,13 @@
       "runtimeExecutable": "D:/APP/Downloads/anaconda3/envs/careerpilot-backend/python.exe",
       "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "SystemCode/backend", "--reload", "--reload-dir", "SystemCode/backend/app", "--port", "8000"],
       "port": 8000
+    },
+    {
+      "name": "frontend",
+      "description": "Vite + React + TypeScript 前端开发服务器",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "SystemCode/frontend"],
+      "port": 5173
     }
   ]
 }

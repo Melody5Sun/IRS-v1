@@ -7,6 +7,9 @@ from app.schemas.resume import ResumeDocument
 # 现场 / 混合 / 远程
 WorkMode = Literal["onsite", "hybrid", "remote"]
 
+# 正职 / 实习：用户要找的工作类型
+TargetEmploymentType = Literal["full_time", "internship"]
+
 # 目标岗位：二级索引，一级为职能大类，二级为具体岗位名称，覆盖 IT 相关职位；参考 ISCO-08/ESCO 的 ICT 职业分类、
 # LinkedIn/Indeed 的岗位命名习惯，以及 2026 年 LinkedIn Jobs on the Rise / Forbes 等报道里生成式 AI 催生的新岗位
 # （AI Engineer、Agent Engineer、MLOps 等）；内容用英文，和简历 schema（LLM 强制英文输出）保持一致；前端下拉框据此渲染
@@ -130,6 +133,8 @@ class JobSearchConstraints(BaseModel):
     target_roles: list[str] = Field(default_factory=list)
     target_industries: list[str] = Field(default_factory=list)
     work_modes: list[WorkMode] = Field(default_factory=list)
+    # 用户要找的工作类型：正职/实习，可多选
+    target_employment_types: list[TargetEmploymentType] = Field(default_factory=list)
     # 补充说明（选填）；上传简历时用简历里的自我介绍预填
     notes: str = ""
 

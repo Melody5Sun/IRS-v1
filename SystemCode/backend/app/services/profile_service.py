@@ -14,6 +14,17 @@ def _is_blank(value: object) -> bool:
     return value is None or value == "not_stated" or (isinstance(value, str) and not value.strip())
 
 
+def merge_patch(base: dict[str, object], patch: dict[str, object]) -> dict[str, object]:
+    """类似 JSON Merge Patch：patch 里的 key 覆盖 base，双方都是 dict 才递归合并，否则整体替换（含列表）。"""
+    merged = dict(base)
+    for key, value in patch.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = merge_patch(merged[key], value)  # type: ignore[arg-type]
+        else:
+            merged[key] = value
+    return merged
+
+
 def find_empty_fields(data: dict[str, object], loc: Loc | None = None) -> list[Loc]:
     """返回不允许为空却为空的字段位置，比如 ["resume", "experiences", 0, "country"]。"""
     loc = loc or []

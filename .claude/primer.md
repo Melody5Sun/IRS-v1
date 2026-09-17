@@ -1,9 +1,9 @@
 # IRS Project Primer
 
-> 最后更新: 2026-09-17
+> 最后更新: 2026-09-17（真实 LLM 简历解析已跑通）
 
 ## ⏭️ 下一步
-- [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `GET/PUT /profile` → `/recommendations`，检查解析质量和推荐理由
+- [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `GET/PUT /profile` → `/recommendations`，检查推荐理由质量（解析质量本身已用真实简历验证过，见下）
 - [ ] 画像持久化到数据库（目前存在内存里）
 - [ ] 求职约束（目标岗位/行业/工作模式）参与推荐：JD schema 还没有这几个字段
 - [ ] 将已加载的 MIND 图谱接入简历/JD 技能标准化与匹配评分
@@ -25,6 +25,7 @@
 - 用户画像 + 求职约束（本地部署，单用户）：`parse-pdf` 解析后自动存入画像 → `GET /profile` 读取 → 用户修改画像、填写求职约束（target_roles / target_industries / work_modes: onsite|hybrid|remote / notes，均可多选）→ `PUT /profile` 整体保存；重新上传简历只替换画像，保留约束
   - PUT 时除选填字段（notes、expiry_date、major、role）外都不能为空（null、空串、空列表、not_stated），experiences/projects/research/certificates 可以一条都没有；返回 422，错误里的 loc 指出具体字段，格式与 FastAPI 自带校验错误一致
   - target_roles / target_industries 已从自由文本收紧为固定范围（内容用英文，和简历 schema 保持一致）：`GET /profile/options` 返回 `target_role_categories`（10 个一级职能大类 → 具体岗位的二级索引，如 Software Development / AI & Machine Learning / Data，参考 ISCO-08/ESCO 的 ICT 职业分类整理）和 `target_industries`（15 个 IT 相关行业，参考 GICS Information Technology 板块整理），供前端渲染下拉框；`PUT /profile` 提交不在这两份清单里的值会被拒（422），清单定义见 `app/schemas/profile.py`
+  - 求职约束新增 `target_employment_types`（正职 `full_time` / 实习 `internship`，可多选，`Literal` 类型自动校验），和 `work_modes` 一样是必填列表（不能提交空数组），定义见 `app/schemas/profile.py`
   - `AI & Machine Learning` 分类补充了生成式 AI/Agent 浪潮下的新岗位（AI Engineer、Generative AI Engineer、LLM Engineer、Prompt Engineer、Agent Engineer、MLOps Engineer、AI Solutions Architect），其他分类也补了 AI Product Manager、AI Governance & Compliance Specialist、Forward Deployed Engineer、Data Annotator，参考 2026 年 LinkedIn Jobs on the Rise 等招聘趋势报道
 - `SYSTEM_PROMPT` 重写为英文：逐字段说明、禁止编造、强制英文输出，约 838 token
 - 测试 `test_system_prompt_covers_every_schema_field`：schema 字段和 prompt 不同步时直接失败
@@ -36,6 +37,12 @@
 - GitHub Actions CI 运行 backend pytest（PR #2，只对目标为 main 的 PR 和 push 触发）；当前共 29 个测试
 - `launch.json` 配置好后端启动（PR #5，已合并）；`config.py` 固定读取 `SystemCode/backend/.env`，从任何目录启动都能读到
 - `settings.json` 的 deny 规则禁止 Claude 读取 `.env`、打印环境变量
+- `PATCH /api/v1/profile`：局部更新画像，只传要改的字段（类似 JSON Merge Patch，`profile_service.merge_patch`），不跑 `PUT` 的“非空”校验，但仍跑 pydantic 字段校验（枚举范围等），非法值 422；无画像时和 `GET` 一样 404
+- 新增 `SystemCode/frontend/` 最小 Vite + React + TypeScript 工程（原来只有一个打包过的静态 demo.html，两者共存不冲突）：
+  - `src/lib/profileStorage.ts` 实现“简历解析结果存 localStorage”：画像和简历历史共用一个 key（`careerpilot:profile`），存的形状是完整 Profile（`{resume, constraints}`），首次上传 `constraints` 全空、之后重传保留已填的 `constraints`；`resumeHistory` 最新在前，超过 3 条自动裁剪；`saveProfile()` 在 PUT 成功后把后端返回结果同步回本地缓存
+  - `ResumeUpload.tsx` 调 `POST /resumes/parse-pdf` 后把结果存进 localStorage；`ProfileForm.tsx` 读 `GET /profile/options` 渲染目标岗位/行业下拉框 + 工作模式/工作类型（正职/实习）勾选框，点“保存画像”调 `PUT /profile` 整体保存；本地跑通需要先起 `backend`（8000）和 `frontend`（5173，已加进 `launch.json`），backend 已加 CORS 放行 `localhost:5173`
+  - `npm run test`（vitest + jsdom）覆盖 `profileStorage.ts` 的空值/保留/裁剪三个行为；`PUT /profile` 的完整链路（选目标岗位/行业、勾工作模式和工作类型、保存）已用真实浏览器交互 + 真实后端手动验证通过
+- 真实 Gemini LLM 简历解析已跑通：`SystemCode/backend/.env` 配好 `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 后，用一份真实 PDF 简历直接 `POST /resumes/parse-pdf` 返回了结构完整的 `ResumeDocument`（姓名/邮箱/电话/多段经历/项目/教育背景全部正确抽取），解析结果也用真实前端代码验证过能正确存进 localStorage
 
 ## 📖 需要先读
 - [CLAUDE.md](../CLAUDE.md) — 项目完整指南
@@ -47,7 +54,7 @@
 - 画像只存在进程内存里，后端重启后需要重新上传简历或 PUT；求职约束暂时不参与推荐
 - 提案「决策自动化」里提到的签证约束已按需求删除，目前硬约束只剩经验年限
 - 经验年限：只写了年份的日期按整年算，同一年起止的短经历会被高估；学历要求（`degree_required`）还没参与硬约束
-- 前端只有一个静态 demo（`SystemCode/frontend/IT CareerPilot-frontend demo.html`），还没接后端 API
+- 前端最小工程已打通“上传简历→解析→localStorage 缓存→编辑求职约束→PUT 保存画像”全链路，但没有接 `PATCH /profile`（只用 `PUT` 整体保存），也没有登录态/多用户概念；`SystemCode/frontend/IT CareerPilot demo.html` 仍是独立的静态打包文件，两者未打通
 - 仓库里没有样例简历，prompt 效果只能靠各自本地的真实简历人工验证
 - 后端使用 Conda 环境 `careerpilot-backend`；依赖安装命令为 `conda activate careerpilot-backend` 后执行 `python -m pip install -r SystemCode/backend/requirements.txt`
 - 各自机器要在 `SystemCode/backend/.env` 里填入真实的 Gemini `LLM_API_KEY` 才能调用 LLM（模板见 `.env.example`）
