@@ -8,6 +8,9 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-17] | 扩充技能同义词后，普通的 `API`/`APIs` 被识别成独立的 `api development` 技能，改变了既有推荐结果 | 技能别名应采用能明确代表能力的短语，避免把通用技术名词直接提升为额外技能；用完整回归测试检查 matched/missing 列表 | SystemCode/backend/app/parsers/skill_lexicon.py
+[2026-09-17] | MIND 概念数据中同一个别名可能对应多个概念，若按唯一索引加载会阻断应用启动 | 概念别名索引必须保留全部候选；精确名称优先，歧义别名由调用方消歧 | SystemCode/backend/app/knowledge/mind_ontology.py
+[2026-09-17] | 旧工作区和远端同时修改配置、技能解析与测试，直接拉取会产生冲突并可能静默删除经验年限字段 | 从最新远端创建独立集成分支，逐项迁移模块并保留远端 schema 契约，再运行完整测试 | SystemCode/backend
 [2026-09-15] | 叠放 PR（#4 的目标分支是 #3 的分支）场景下，用 `gh pr merge 3 --merge --delete-branch` 合并 #3 后，#4 没有自动改为合并到 main，而是随目标分支被删而自动关闭，并且无法直接改目标分支 | 合并叠放 PR 的底层 PR 时，**先** `gh pr edit <上层PR> --base main`，**再**合并并删除底层分支。如果已经被关闭：把被删分支按原 commit 推回（`git push origin <sha>:refs/heads/<分支>`）→ `gh pr reopen` → `gh pr edit --base main` → 再删分支。另外，只改目标分支不会触发 `pull_request` CI，需要再推一个提交 | GitHub PR 流程
 
 [2026-09-15] | JD 写 "Build APIs with Python, FastAPI and SQL." 时 sql 没被识别成必需技能；老测试用的就是这句话，但没断言 sql，所以一直没发现 | 技能词边界正则的后向断言不能直接排除 "."，否则位于句末的技能全部漏掉；只在 "." 后面还跟着字母数字时才算词的一部分（`(?![\w+#-]|\.\w)`）。写测试时要对抽取结果做完整断言（matched 和 missing 都要查），不能只看排序 | SystemCode/backend/app/parsers/text_parser.py

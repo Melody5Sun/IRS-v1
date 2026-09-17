@@ -288,6 +288,26 @@ def test_profile_rejects_unknown_work_mode(monkeypatch: pytest.MonkeyPatch) -> N
     assert profile_service.profile is None
 
 
+def test_analyze_job_requirements_extracts_structured_document() -> None:
+    response = client.post(
+        "/api/v1/jobs/analyze-requirements",
+        json={
+            "job_id": "job-1",
+            "title": "Software Engineer Intern",
+            "company": "Acme",
+            "description": "Required experience with Python and SQL. Docker is a plus.",
+            "location": "Singapore",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["employment_type"] == "internship"
+    assert body["candidate_type"] == "student"
+    assert set(body["required_skills"]) == {"python", "sql"}
+    assert body["preferred_skills"] == ["docker"]
+
+
 def test_recommendations_rank_matching_job_first() -> None:
     response = client.post(
         "/api/v1/recommendations",
