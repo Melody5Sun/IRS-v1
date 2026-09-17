@@ -8,6 +8,7 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-17] | Windows 新克隆仓库执行 `commit-msg` 钩子时报 `grep: command not found`，提交检查被跳过 | 钩子的核心校验应使用 POSIX shell 内建的 `while` 和 `case`，避免依赖目标机器未必提供的 `grep` | .claude/hooks/commit-msg
 [2026-09-17] | 扩充技能同义词后，普通的 `API`/`APIs` 被识别成独立的 `api development` 技能，改变了既有推荐结果 | 技能别名应采用能明确代表能力的短语，避免把通用技术名词直接提升为额外技能；用完整回归测试检查 matched/missing 列表 | SystemCode/backend/app/parsers/skill_lexicon.py
 [2026-09-17] | MIND 概念数据中同一个别名可能对应多个概念，若按唯一索引加载会阻断应用启动 | 概念别名索引必须保留全部候选；精确名称优先，歧义别名由调用方消歧 | SystemCode/backend/app/knowledge/mind_ontology.py
 [2026-09-17] | 旧工作区和远端同时修改配置、技能解析与测试，直接拉取会产生冲突并可能静默删除经验年限字段 | 从最新远端创建独立集成分支，逐项迁移模块并保留远端 schema 契约，再运行完整测试 | SystemCode/backend
