@@ -20,11 +20,11 @@
   - 空行后正文用 `-` 列出 2–5 条要点（中文），说明改了什么、为什么改
   - 类型选择顺序: `fix` → `feat` → `refactor` → `style` → `chore` → `docs` → `test` → `perf` → `ci` → 其他（如 `move`/`rename`/`wip`/`revert`）
 
-- **分支命名**（前缀与提交类型一致，避免两套体系）:
+- **分支命名**（前缀与提交类型一致，避免两套体系，仅在需要开 PR 时使用）:
   - `feat/user-auth-system`
   - `fix/env-loading-issue`
   - `docs/architecture-guide`
-  - 禁止直接 push 到 `main` — 一律通过 PR
+  - 允许直接 push 到 `main`，不强制走 PR
 
 ## 回复规范
 

@@ -6,6 +6,7 @@
       "Bash(git diff*)",
       "Bash(git add*)",
       "Bash(git branch*)",
+      "Bash(git push*)",
       "Bash(npm install*)",
       "Bash(npm run*)",
       "Bash(pip install*)",
