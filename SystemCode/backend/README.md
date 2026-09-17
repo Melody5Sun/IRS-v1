@@ -8,7 +8,9 @@ FastAPI backend for the IT CareerPilot IRS project.
 - Resume PDF parsing endpoint (`POST /api/v1/resumes/parse-pdf`, LLM-based)
 - User profile and job-search constraints (`GET/PUT /api/v1/profile`, in-memory, single local user)
 - Job analysis endpoint with requirement extraction
+- Job sync/list endpoints backed by local SQLite storage
 - Recommendation endpoint with hard-constraint checks and explainable scoring
+- MIND Tech Skills Ontology snapshot loaded at application startup
 - Focused pytest tests for the initial API contract
 
 ## Project layout
@@ -18,12 +20,17 @@ backend/
   app/
     api/v1/          # HTTP routes
     core/            # settings and shared config
+    db/              # SQLite connection and schema
+    ingestion/       # external job source clients and synchronization
+    knowledge/       # MIND knowledge graph loader
     matching/        # scoring and constraint logic
     parsers/         # resume and job parsing helpers
+    repositories/    # persistence access
     schemas/         # Pydantic request/response models
     services/        # application use cases
     main.py          # FastAPI app factory
   tests/             # API and service tests
+  data/              # versioned ontology data and ignored runtime databases
 ```
 
 ## Local setup
@@ -45,6 +52,28 @@ Open the interactive API docs at:
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+Use `POST /api/v1/jobs/sync` to fetch supported public job sources into the
+local SQLite database. Use `GET /api/v1/jobs` to list active jobs and
+`POST /api/v1/jobs/{job_id}/analyze-requirements` to create a structured JD.
+Runtime database files such as `data/careerpilot.db` are ignored by Git.
+
+## MIND knowledge graph
+
+The backend includes a pinned MIND Tech Skills Ontology snapshot under
+`data/mind_ontology`. The application validates and loads 3,333 skill nodes and
+974 concept nodes during startup. Access the graph from application code with:
+
+```python
+from app.knowledge import get_mind_knowledge_graph
+
+graph = get_mind_knowledge_graph()
+react = graph.get_skill("react.js")
+prerequisites = graph.related_skills("Next.js", "impliesKnowingSkills")
+```
+
+The graph is loaded and queryable but is not yet connected to recommendation
+scoring.
 
 ## Run tests
 
