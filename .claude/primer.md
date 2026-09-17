@@ -42,18 +42,19 @@
 - 经验年限：只写了年份的日期按整年算，同一年起止的短经历会被高估；学历要求（`degree_required`）还没参与硬约束
 - 前端只有一个静态 demo（`SystemCode/frontend/IT CareerPilot-frontend demo.html`），还没接后端 API
 - 仓库里没有样例简历，prompt 效果只能靠各自本地的真实简历人工验证
-- 本机没有系统 Python，要用 uv 建 `SystemCode/backend/.venv`（步骤见 lessons.md）；`.venv`、`.uv-python` 已被 gitignore 忽略
+- 后端使用 Conda 环境 `careerpilot-backend`；依赖安装命令为 `conda activate careerpilot-backend` 后执行 `python -m pip install -r SystemCode/backend/requirements.txt`
 - 各自机器要在 `SystemCode/backend/.env` 里填入真实的 Gemini `LLM_API_KEY` 才能调用 LLM（模板见 `.env.example`）
 - 禁止 Co-Authored-By 行，PR 描述里也不加 "Generated with Claude Code"。由 `.claude/hooks/commit-msg` 钩子强制检查，新克隆的仓库需要运行一次 `git config core.hooksPath .claude/hooks`
 - 禁止直接 push 到 main，一律开分支提 PR
 
 ## 🛠️ 快速启动
 ```bash
+conda activate careerpilot-backend
 cd SystemCode/backend
-.venv/Scripts/python.exe -m pytest tests/ -q          # 跑测试
-.venv/Scripts/python.exe -m uvicorn app.main:app --reload   # 启动后端，文档在 /docs
+python -m pytest tests/ -q          # 跑测试
+python -m uvicorn app.main:app --reload   # 启动后端，文档在 /docs
 ```
-- 也可以用 `.claude/launch.json` 里的 `backend` 配置启动（端口 8000，要先关掉占用该端口的进程）。路径 `.venv/Scripts/python.exe` 只适用于 Windows，macOS/Linux 改成 `.venv/bin/python`
+- 也可以用 `.claude/launch.json` 里的 `backend` 配置启动（端口 8000，要先关掉占用该端口的进程）。
 
 ## 🗓️ 关键日期
 - 2026-10-25 — 最终交付截止日期（代码、报告、视频、成员属性文件）

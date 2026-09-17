@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "backend",
-      "description": "FastAPI 后端（需先按 lessons.md 用 uv 建好 SystemCode/backend/.venv），接口文档在 /docs",
-      "runtimeExecutable": "SystemCode/backend/.venv/Scripts/python.exe",
+      "description": "FastAPI 后端（使用 Conda 环境 careerpilot-backend），接口文档在 /docs",
+      "runtimeExecutable": "D:/APP/Downloads/anaconda3/envs/careerpilot-backend/python.exe",
       "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "SystemCode/backend", "--reload", "--reload-dir", "SystemCode/backend/app", "--port", "8000"],
       "port": 8000
     }

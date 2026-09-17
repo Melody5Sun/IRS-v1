@@ -29,10 +29,9 @@ backend/
 ## Local setup
 
 ```bash
+conda activate careerpilot-backend
 cd SystemCode/backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ## Run the API
