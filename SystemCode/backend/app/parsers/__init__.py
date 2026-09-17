@@ -1,1 +1,1 @@
-"""Resume and job text parsers."""
+"""Job and shared text parsers."""

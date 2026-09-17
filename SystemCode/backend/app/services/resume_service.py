@@ -1,4 +1,4 @@
-from app.parsers.resume_parser import ResumeParser
+from app.resume.resume_parser import ResumeParser
 from app.schemas.resume import ParsedResume
 
 

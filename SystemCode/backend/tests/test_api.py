@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from app.api.v1.routes import resumes as resumes_route
 from app.main import app
 from app.matching.scorer import calculate_experience_years
-from app.parsers.llm_resume_parser import SYSTEM_PROMPT, LLMResumeParser, ResumeParsingError
-from app.parsers.resume_parser import ResumeParser
+from app.resume.llm_resume_parser import SYSTEM_PROMPT, LLMResumeParser, ResumeParsingError
+from app.resume.resume_parser import ResumeParser
 from app.schemas.resume import Experience, ParsedResume
 from app.services.profile_service import profile_service
 from app.services.resume_service import ResumeService

@@ -1,4 +1,4 @@
-from app.parsers.llm_resume_parser import LLMResumeParser
+from app.resume.llm_resume_parser import LLMResumeParser
 from app.schemas.resume import ParsedResume
 
 
