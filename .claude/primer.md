@@ -1,16 +1,17 @@
 # IRS Project Primer
 
-> 最后更新: 2026-09-15
+> 最后更新: 2026-09-17
 
 ## ⏭️ 下一步
 - [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `GET/PUT /profile` → `/recommendations`，检查解析质量和推荐理由
 - [ ] 画像持久化到数据库（目前存在内存里）
 - [ ] 求职约束（目标岗位/行业/工作模式）参与推荐：JD schema 还没有这几个字段
-- [ ] JD 解析升级：目前是关键词词表匹配，按提案接入 Sentence-BERT 语义匹配 + ESCO 技能对齐
+- [ ] 将已加载的 MIND 图谱接入简历/JD 技能标准化与匹配评分
+- [ ] JD 解析继续升级：在规则与 LLM 结构化抽取基础上评估 Sentence-BERT 语义匹配
 - [ ] 提案中尚未开始的部分：遗传算法投递排期、Neo4j 知识图谱、RAG 面试准备
 
 ## 📊 项目阶段
-**当前**: 第 1 阶段 — 后端骨架已搭好，简历解析（LLM）可用，匹配还是基线版本
+**当前**: 第 1 阶段 — 简历和 JD 已可结构化，MIND 图谱已加载，匹配仍是基线版本
 **截止日期**: 2026-10-25
 
 ## ✅ 已完成
@@ -26,6 +27,8 @@
 - `SYSTEM_PROMPT` 重写为英文：逐字段说明、禁止编造、强制英文输出，约 838 token
 - 测试 `test_system_prompt_covers_every_schema_field`：schema 字段和 prompt 不同步时直接失败
 - 推荐基线：技能关键词交集打分 + 硬约束（经验年限）
+- JD 数据链路：从公开 ATS/API 同步岗位到 SQLite，支持结构化要求解析、持久化和失效岗位处理
+- MIND 技能知识图谱：固定 3,333 个技能和 974 个概念的版本快照，应用启动时完成校验与内存加载
 - 简历解析 → 推荐已打通：`/recommendations` 的 `candidate` 直接接收 `ResumeDocument`。技能用 JD 同一套词表归一化；经验年限按 experiences 日期的月份并集计算，重叠不重复算
 - GitHub Actions CI 运行 backend pytest（PR #2，只对目标为 main 的 PR 和 push 触发）；当前共 11 个测试
 - `launch.json` 配置好后端启动（PR #5，已合并）；`config.py` 固定读取 `SystemCode/backend/.env`，从任何目录启动都能读到
@@ -36,7 +39,8 @@
 - [lessons.md](lessons.md) — 踩坑记录（**本机 Python 环境搭建方法在这里**）
 
 ## ⚠️ 已知限制
-- JD 和候选人的技能匹配都依赖 `skill_lexicon.py` 固定词表，词表外的技能识别不到（也不会出现在 matched/missing 里）；"React.js"、"ReactJS" 这类写法匹配不到 react
+- JD 和候选人的技能匹配目前仍依赖 `skill_lexicon.py`；MIND 图谱已经加载，但尚未接入提取和评分
+- MIND 上游少量 `impliesKnowingSkills` 关系指向未定义技能，加载器会统计但不会阻断应用启动
 - 画像只存在进程内存里，后端重启后需要重新上传简历或 PUT；求职约束暂时不参与推荐
 - 提案「决策自动化」里提到的签证约束已按需求删除，目前硬约束只剩经验年限
 - 经验年限：只写了年份的日期按整年算，同一年起止的短经历会被高估；学历要求（`degree_required`）还没参与硬约束
