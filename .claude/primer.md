@@ -24,6 +24,8 @@
   - 已移出：location、desired_position（改到求职约束）、skill level、language level、visa_status/requires_sponsorship（签证相关全部删除，岗位侧 `visa_sponsorship` 和签证硬约束也一并删除）
 - 用户画像 + 求职约束（本地部署，单用户）：`parse-pdf` 解析后自动存入画像 → `GET /profile` 读取 → 用户修改画像、填写求职约束（target_roles / target_industries / work_modes: onsite|hybrid|remote / notes，均可多选）→ `PUT /profile` 整体保存；重新上传简历只替换画像，保留约束
   - PUT 时除选填字段（notes、expiry_date、major、role）外都不能为空（null、空串、空列表、not_stated），experiences/projects/research/certificates 可以一条都没有；返回 422，错误里的 loc 指出具体字段，格式与 FastAPI 自带校验错误一致
+  - target_roles / target_industries 已从自由文本收紧为固定范围（内容用英文，和简历 schema 保持一致）：`GET /profile/options` 返回 `target_role_categories`（10 个一级职能大类 → 具体岗位的二级索引，如 Software Development / AI & Machine Learning / Data，参考 ISCO-08/ESCO 的 ICT 职业分类整理）和 `target_industries`（15 个 IT 相关行业，参考 GICS Information Technology 板块整理），供前端渲染下拉框；`PUT /profile` 提交不在这两份清单里的值会被拒（422），清单定义见 `app/schemas/profile.py`
+  - `AI & Machine Learning` 分类补充了生成式 AI/Agent 浪潮下的新岗位（AI Engineer、Generative AI Engineer、LLM Engineer、Prompt Engineer、Agent Engineer、MLOps Engineer、AI Solutions Architect），其他分类也补了 AI Product Manager、AI Governance & Compliance Specialist、Forward Deployed Engineer、Data Annotator，参考 2026 年 LinkedIn Jobs on the Rise 等招聘趋势报道
 - `SYSTEM_PROMPT` 重写为英文：逐字段说明、禁止编造、强制英文输出，约 838 token
 - 测试 `test_system_prompt_covers_every_schema_field`：schema 字段和 prompt 不同步时直接失败
 - 推荐基线：技能关键词交集打分 + 硬约束（经验年限）
@@ -31,7 +33,7 @@
 - MIND 技能知识图谱：固定 3,333 个技能和 974 个概念的版本快照，应用启动时完成校验与内存加载
 - 简历解析 → 推荐已打通：`/recommendations` 的 `candidate` 直接接收 `ResumeDocument`。技能用 JD 同一套词表归一化；经验年限按 experiences 日期的月份并集计算，重叠不重复算
 - 代码结构整理（PR #8，已合并到 main）：OpenAI 兼容客户端（`ChatClient`/`OpenAICompatibleClient`）从 `llm_resume_parser.py` 拆到 `app/services/openai_client_service.py`；简历解析文件（`llm_resume_parser.py`、`resume_parser.py`）从 `app/parsers/` 提到顶层 `app/resume/`，和 `api`/`core`/`knowledge`/`parsers`/`services` 平级；合并后 `python -m pytest tests/ -q` 全量 27 个测试通过
-- GitHub Actions CI 运行 backend pytest（PR #2，只对目标为 main 的 PR 和 push 触发）；当前共 27 个测试
+- GitHub Actions CI 运行 backend pytest（PR #2，只对目标为 main 的 PR 和 push 触发）；当前共 29 个测试
 - `launch.json` 配置好后端启动（PR #5，已合并）；`config.py` 固定读取 `SystemCode/backend/.env`，从任何目录启动都能读到
 - `settings.json` 的 deny 规则禁止 Claude 读取 `.env`、打印环境变量
 

@@ -54,8 +54,8 @@ COMPLETE_PROFILE = {
         "languages": ["English"],
     },
     "constraints": {
-        "target_roles": ["Backend Engineer"],
-        "target_industries": ["Fintech"],
+        "target_roles": ["Backend Developer"],
+        "target_industries": ["Financial Technology (FinTech)"],
         "work_modes": ["hybrid", "remote"],
         "notes": "Available from 2026-06.",
     },
@@ -286,6 +286,31 @@ def test_profile_rejects_unknown_work_mode(monkeypatch: pytest.MonkeyPatch) -> N
 
     assert response.status_code == 422
     assert profile_service.profile is None
+
+
+def test_profile_rejects_unknown_target_role_or_industry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(profile_service, "profile", None)
+    profile = copy.deepcopy(COMPLETE_PROFILE)
+    profile["constraints"]["target_roles"] = ["Backend Engineer"]
+    profile["constraints"]["target_industries"] = ["Fintech"]
+
+    response = client.put("/api/v1/profile", json=profile)
+
+    assert response.status_code == 422
+    assert profile_service.profile is None
+
+
+def test_profile_options_expose_role_categories_and_industries() -> None:
+    response = client.get("/api/v1/profile/options")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "Software Development" in body["target_role_categories"]
+    assert "Backend Developer" in body["target_role_categories"]["Software Development"]
+    assert "Financial Technology (FinTech)" in body["target_industries"]
+    # 生成式 AI 浪潮下新出现的岗位也应该在预设列表里
+    assert "AI Engineer" in body["target_role_categories"]["AI & Machine Learning"]
+    assert "AI Product Manager" in body["target_role_categories"]["Product & Project Management"]
 
 
 def test_analyze_job_requirements_extracts_structured_document() -> None:

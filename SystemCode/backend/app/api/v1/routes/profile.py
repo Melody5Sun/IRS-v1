@@ -1,9 +1,15 @@
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.profile import UserProfile
+from app.schemas.profile import ProfileOptions, UserProfile
 from app.services.profile_service import find_empty_fields, profile_service
 
 router = APIRouter()
+
+
+@router.get("/options", response_model=ProfileOptions)
+def get_profile_options() -> ProfileOptions:
+    # 目标岗位（二级分类）、目标行业的固定范围，前端下拉框据此渲染
+    return ProfileOptions()
 
 
 @router.get("", response_model=UserProfile)
