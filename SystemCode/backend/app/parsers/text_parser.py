@@ -1,6 +1,6 @@
 import re
 
-from app.parsers.skill_lexicon import KNOWN_SKILLS
+from app.parsers.skill_lexicon import SKILL_SYNONYMS
 
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 PHONE_PATTERN = re.compile(r"(?:\+?\d[\d\s().-]{7,}\d)")
@@ -23,14 +23,19 @@ def extract_experience_years(text: str) -> float | None:
 
 
 def extract_skills(text: str) -> list[str]:
+    return [skill for skill, _ in find_skill_matches(text)]
+
+
+def find_skill_matches(text: str) -> list[tuple[str, str]]:
     normalized_text = text.lower()
-    skills = [
-        skill
-        for skill in KNOWN_SKILLS
-        # 后面紧跟的 "." 只有接着字母数字时才算词的一部分（如 node.js），句末的句号不能挡住匹配
-        if re.search(rf"(?<![\w+#.-]){re.escape(skill)}(?![\w+#-]|\.\w)", normalized_text)
-    ]
-    return sorted(skills)
+    matches: dict[str, str] = {}
+    for skill, aliases in SKILL_SYNONYMS.items():
+        for alias in aliases:
+            pattern = rf"(?<![\w+#]){re.escape(alias.lower())}(?![\w+#])"
+            if re.search(pattern, normalized_text):
+                matches[skill] = alias
+                break
+    return sorted(matches.items())
 
 
 def first_non_empty_line(text: str) -> str | None:
