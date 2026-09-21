@@ -43,6 +43,7 @@
   - `ResumeUpload.tsx` 调 `POST /resumes/parse-pdf` 后把结果存进 localStorage；`ProfileForm.tsx` 读 `GET /profile/options` 渲染目标岗位/行业下拉框 + 工作模式/工作类型（正职/实习）勾选框，点“保存画像”调 `PUT /profile` 整体保存；本地跑通需要先起 `backend`（8000）和 `frontend`（5173，已加进 `launch.json`），backend 已加 CORS 放行 `localhost:5173`
   - `npm run test`（vitest + jsdom）覆盖 `profileStorage.ts` 的空值/保留/裁剪三个行为；`PUT /profile` 的完整链路（选目标岗位/行业、勾工作模式和工作类型、保存）已用真实浏览器交互 + 真实后端手动验证通过
 - 真实 Gemini LLM 简历解析已跑通：`SystemCode/backend/.env` 配好 `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 后，用一份真实 PDF 简历直接 `POST /resumes/parse-pdf` 返回了结构完整的 `ResumeDocument`（姓名/邮箱/电话/多段经历/项目/教育背景全部正确抽取），解析结果也用真实前端代码验证过能正确存进 localStorage
+- 硬约束规则引擎 `app/rule_engine/`（Experta，独立于 FastAPI，尚未接入 API）：6 条规则（状态/学历/工作模式/雇佣类型/候选人类型/行业），入口 `filter_jobs(profile, db_path) -> {"job_ids": [...]}`，CLI `python -m app.rule_engine <profile.json> <db> [--stats]`；规则清单和新增方法见该目录 README；`tests/test_rule_engine.py` 共 41 个用例
 
 ## 📖 需要先读
 - [CLAUDE.md](../CLAUDE.md) — 项目完整指南
