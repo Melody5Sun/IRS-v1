@@ -27,7 +27,6 @@ class GeminiService:
         payload.setdefault("source_job_id", job.external_id)
         payload.setdefault("company", job.company)
         payload.setdefault("title", job.title)
-        payload["analysis_method"] = "gemini"
         return JobRequirementDocument.model_validate(payload)
 
     def _build_prompt(self, job: JobPosting) -> str:
@@ -44,17 +43,13 @@ Rules:
 
 Schema fields:
 job_id, source_job_id, company, title, summary, employment_type, candidate_type,
-seniority_level, location, remote_policy, visa_sponsorship, work_authorization_notes,
-degree_required, major_required, responsibilities,
-required_skills, preferred_skills, keywords, source_evidence,
-analysis_version, analysis_method
+location, remote_policy, degree_required, major_required, responsibilities,
+required_skills, preferred_skills, keywords, source_evidence
 
 Allowed values:
 employment_type: internship, full_time, part_time, contract, freelance, not_stated
 candidate_type: student, new_graduate, experienced, not_stated
-seniority_level: intern, entry_level, junior, mid, senior, not_stated
 remote_policy: onsite, hybrid, remote, not_stated
-visa_sponsorship: provided, not_provided, not_stated
 degree_required: bachelor, master, phd, diploma, not_applicable, not_stated
 
 Job:
@@ -79,6 +74,10 @@ description:
 
     def _normalize_payload(self, payload: dict, job: JobPosting) -> dict:
         normalized = dict(payload)
+
+        from app.parsers.job_industry_classifier import classify_company_industry
+
+        normalized["industry"] = classify_company_industry(job.company)
 
         if not isinstance(normalized.get("job_id"), int):
             normalized["job_id"] = job.id

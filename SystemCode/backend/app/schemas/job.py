@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.common import (
     CandidateType,
@@ -9,9 +9,8 @@ from app.schemas.common import (
     EmploymentType,
     Location,
     RemotePolicy,
-    SeniorityLevel,
-    VisaSponsorship,
 )
+from app.schemas.profile import TARGET_INDUSTRIES
 
 
 class JobAnalysisRequest(BaseModel):
@@ -20,9 +19,7 @@ class JobAnalysisRequest(BaseModel):
     company: str
     description: str = Field(..., min_length=1)
     location: str | None = None
-    visa_sponsorship: bool | None = None
     degree_required: str | None = None
-    min_experience_years: float | None = None
 
 
 class JobAnalysis(BaseModel):
@@ -127,14 +124,12 @@ class JobRequirementDocument(BaseModel):
     source_job_id: str | None = None
     company: str
     title: str
+    industry: str = "Software & IT Services"
     summary: str = ""
     employment_type: EmploymentType = "not_stated"
     candidate_type: CandidateType = "not_stated"
-    seniority_level: SeniorityLevel = "not_stated"
     location: Location | None = None
     remote_policy: RemotePolicy = "not_stated"
-    visa_sponsorship: VisaSponsorship = "not_stated"
-    work_authorization_notes: str | None = None
     degree_required: Degree = "not_stated"
     major_required: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
@@ -142,9 +137,12 @@ class JobRequirementDocument(BaseModel):
     preferred_skills: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
     source_evidence: list[str] = Field(default_factory=list)
-    analysis_version: str = "1.0"
-    analysis_method: str = "not_stated"
-    analyzed_at: datetime | None = None
+    @field_validator("industry")
+    @classmethod
+    def validate_industry(cls, value: str) -> str:
+        if value not in TARGET_INDUSTRIES:
+            raise ValueError("industry must be chosen from TARGET_INDUSTRIES")
+        return value
 
 
 class JobMatchFeatures(BaseModel):

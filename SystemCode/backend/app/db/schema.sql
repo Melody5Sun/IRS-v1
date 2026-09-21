@@ -35,6 +35,37 @@ CREATE TABLE IF NOT EXISTS company_sources (
 CREATE INDEX IF NOT EXISTS idx_company_sources_enabled_priority
 ON company_sources(enabled, priority, company);
 
+CREATE TABLE IF NOT EXISTS industries (
+    name TEXT PRIMARY KEY
+);
+
+INSERT OR IGNORE INTO industries(name) VALUES
+    ('Internet'),
+    ('Software & IT Services'),
+    ('Artificial Intelligence'),
+    ('Semiconductors & Integrated Circuits'),
+    ('Telecommunications'),
+    ('Cloud Computing & Big Data'),
+    ('Financial Technology (FinTech)'),
+    ('E-commerce'),
+    ('Gaming'),
+    ('IoT & Smart Hardware'),
+    ('Enterprise Software & SaaS'),
+    ('Cybersecurity'),
+    ('Education Technology (EdTech)'),
+    ('Healthcare Technology (HealthTech)'),
+    ('Automotive & Autonomous Driving');
+
+CREATE TABLE IF NOT EXISTS company_industries (
+    normalized_company TEXT PRIMARY KEY,
+    company TEXT NOT NULL,
+    industry TEXT NOT NULL,
+    FOREIGN KEY(industry) REFERENCES industries(name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_company_industries_industry
+ON company_industries(industry, company);
+
 CREATE TABLE IF NOT EXISTS job_analysis (
     job_id INTEGER PRIMARY KEY,
     summary TEXT NOT NULL DEFAULT '',
@@ -43,17 +74,11 @@ CREATE TABLE IF NOT EXISTS job_analysis (
     preferred_skills_json TEXT NOT NULL DEFAULT '[]',
     employment_type TEXT NOT NULL DEFAULT 'not_stated',
     candidate_type TEXT NOT NULL DEFAULT 'not_stated',
-    seniority_level TEXT NOT NULL DEFAULT 'not_stated',
     remote_policy TEXT NOT NULL DEFAULT 'not_stated',
-    visa_sponsorship TEXT NOT NULL DEFAULT 'not_stated',
-    work_authorization_notes TEXT,
     degree_required TEXT NOT NULL DEFAULT 'not_stated',
     major_required_json TEXT NOT NULL DEFAULT '[]',
     keywords_json TEXT NOT NULL DEFAULT '[]',
     source_evidence_json TEXT NOT NULL DEFAULT '[]',
-    analysis_version TEXT NOT NULL DEFAULT '1.0',
-    analysis_method TEXT NOT NULL DEFAULT 'not_stated',
-    analyzed_at TEXT,
     analysis_json TEXT NOT NULL DEFAULT '{}',
     FOREIGN KEY(job_id) REFERENCES jobs(id)
 );

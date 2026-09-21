@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 
+from app.db.sqlite import connect
 from app.parsers.job_requirement_parser import JobRequirementParser
 from app.repositories.job_repository import JobRepository
 from app.schemas.job import JobAnalysisRequest, JobPosting
+from app.schemas.profile import TARGET_INDUSTRIES
 from app.services.job_requirement_service import JobRequirementService
 
 
@@ -27,12 +29,16 @@ def test_job_requirement_parser_extracts_core_matching_fields() -> None:
     preferred_skill_names = set(document.preferred_skills)
 
     assert document.employment_type == "internship"
+    assert document.industry == "E-commerce"
     assert document.candidate_type == "student"
     assert document.degree_required == "bachelor"
     assert "python" in required_skill_names
     assert "sql" in required_skill_names
     assert "fastapi" in required_skill_names
     assert "docker" in preferred_skill_names
+    assert {"seniority_level", "analysis_version", "analysis_method", "analyzed_at"}.isdisjoint(
+        document.model_dump()
+    )
 
 
 def test_job_repository_saves_job_requirement_analysis(tmp_path) -> None:
@@ -40,7 +46,7 @@ def test_job_repository_saves_job_requirement_analysis(tmp_path) -> None:
     now = datetime.now(timezone.utc)
     job = JobPosting(
         source="test_source",
-        company="TestCo",
+        company="Stripe",
         external_id="job-1",
         title="Data Engineer Intern",
         location="Singapore",
@@ -57,6 +63,26 @@ def test_job_repository_saves_job_requirement_analysis(tmp_path) -> None:
     repository.save_job_analysis(document)
 
     assert document.job_id == stored_job.id
+    with connect(repository.db_path) as connection:
+        row = connection.execute(
+            "SELECT company, industry FROM company_industries WHERE normalized_company = ?",
+            ("stripe",),
+        ).fetchone()
+        analysis_columns = {
+            column["name"]
+            for column in connection.execute("PRAGMA table_info(job_analysis)").fetchall()
+        }
+    assert row["company"] == "Stripe"
+    assert row["industry"] == "Financial Technology (FinTech)"
+    assert {
+        "industry",
+        "seniority_level",
+        "analysis_version",
+        "analysis_method",
+        "analyzed_at",
+    }.isdisjoint(
+        analysis_columns
+    )
 
 
 def test_job_requirement_parser_infers_skills_from_context() -> None:
@@ -75,6 +101,34 @@ def test_job_requirement_parser_infers_skills_from_context() -> None:
     )
 
     assert {"linux", "cloud computing", "ci/cd"}.issubset(set(document.required_skills))
+
+
+def test_job_industry_uses_company_not_job_title() -> None:
+    parser = JobRequirementParser()
+    document = parser.parse_request(
+        request=JobAnalysisRequest(
+            job_id="job-ai",
+            company="Stripe",
+            title="Machine Learning Engineer Intern",
+            location="Singapore",
+            description="Develop models with Python for internal products.",
+        )
+    )
+
+    assert document.industry == "Financial Technology (FinTech)"
+
+
+def test_industry_table_contains_the_fixed_taxonomy(tmp_path) -> None:
+    repository = JobRepository(tmp_path / "careerpilot.db")
+    repository.count_job_analysis()
+
+    with connect(repository.db_path) as connection:
+        industries = {
+            row["name"]
+            for row in connection.execute("SELECT name FROM industries").fetchall()
+        }
+
+    assert industries == set(TARGET_INDUSTRIES)
 
 
 def test_job_requirement_service_falls_back_when_gemini_is_not_configured(tmp_path) -> None:
@@ -106,7 +160,7 @@ def test_job_requirement_service_falls_back_when_gemini_is_not_configured(tmp_pa
     document = service.analyze_stored_job(stored_job.id)
 
     assert document is not None
-    assert document.analysis_method == "rule_based"
+    assert document.industry == "Software & IT Services"
     assert set(document.required_skills) == {"python", "sql"}
 
 

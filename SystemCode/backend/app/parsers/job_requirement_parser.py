@@ -1,14 +1,12 @@
-from datetime import datetime, timezone
 import re
 
+from app.parsers.job_industry_classifier import classify_company_industry
 from app.parsers.text_parser import find_skill_matches
 from app.schemas.common import (
     CandidateType,
     Degree,
     EmploymentType,
     Location,
-    SeniorityLevel,
-    VisaSponsorship,
 )
 from app.schemas.job import JobAnalysisRequest, JobPosting, JobRequirementDocument
 
@@ -42,7 +40,6 @@ class JobRequirementParser:
             source_job_id=request.job_id,
             fallback_employment_type=request.employment_type if hasattr(request, "employment_type") else None,
             fallback_degree=request.degree_required,
-            fallback_visa=self._visa_from_bool(request.visa_sponsorship),
         )
 
     def parse_posting(self, posting: JobPosting) -> JobRequirementDocument:
@@ -66,7 +63,6 @@ class JobRequirementParser:
         job_id: int | None = None,
         fallback_employment_type: str | None = None,
         fallback_degree: str | None = None,
-        fallback_visa: VisaSponsorship = "not_stated",
     ) -> JobRequirementDocument:
         combined_text = f"{title}\n{description}"
         sentences = self._sentences(combined_text)
@@ -77,14 +73,12 @@ class JobRequirementParser:
             source_job_id=source_job_id,
             company=company,
             title=title,
+            industry=classify_company_industry(company),
             summary=self._summary(description),
             employment_type=self._employment_type(combined_text, fallback_employment_type),
             candidate_type=self._candidate_type(combined_text),
-            seniority_level=self._seniority_level(combined_text),
             location=self._location(location_text),
             remote_policy=self._remote_policy(combined_text),
-            visa_sponsorship=self._visa_sponsorship(combined_text, fallback_visa),
-            work_authorization_notes=self._work_authorization_notes(sentences),
             degree_required=self._degree_required(combined_text, fallback_degree),
             major_required=self._major_required(combined_text),
             responsibilities=self._responsibilities(sentences),
@@ -92,9 +86,6 @@ class JobRequirementParser:
             preferred_skills=preferred_skills,
             keywords=self._keywords(required_skills, preferred_skills),
             source_evidence=self._source_evidence(sentences),
-            analysis_version="1.0",
-            analysis_method="rule_based",
-            analyzed_at=datetime.now(timezone.utc),
         )
 
     def _sentences(self, text: str) -> list[str]:
@@ -133,18 +124,6 @@ class JobRequirementParser:
             return "experienced"
         return "not_stated"
 
-    def _seniority_level(self, text: str) -> SeniorityLevel:
-        normalized = text.lower()
-        if "intern" in normalized:
-            return "intern"
-        if "entry level" in normalized or "new grad" in normalized or "graduate" in normalized:
-            return "entry_level"
-        if "junior" in normalized:
-            return "junior"
-        if "senior" in normalized or "lead" in normalized:
-            return "senior"
-        return "not_stated"
-
     def _location(self, location_text: str | None) -> Location | None:
         if not location_text:
             return None
@@ -164,30 +143,6 @@ class JobRequirementParser:
         if "onsite" in normalized or "on-site" in normalized:
             return "onsite"
         return "not_stated"
-
-    def _visa_from_bool(self, visa_sponsorship: bool | None) -> VisaSponsorship:
-        if visa_sponsorship is True:
-            return "provided"
-        if visa_sponsorship is False:
-            return "not_provided"
-        return "not_stated"
-
-    def _visa_sponsorship(self, text: str, fallback: VisaSponsorship) -> VisaSponsorship:
-        normalized = text.lower()
-        if "visa sponsorship" in normalized or "sponsor" in normalized:
-            if "not sponsor" in normalized or "no sponsorship" in normalized or "unable to sponsor" in normalized:
-                return "not_provided"
-            return "provided"
-        if "singapore citizen" in normalized or "permanent resident" in normalized:
-            return "not_provided"
-        return fallback
-
-    def _work_authorization_notes(self, sentences: list[str]) -> str | None:
-        for sentence in sentences:
-            normalized = sentence.lower()
-            if "visa" in normalized or "sponsor" in normalized or "citizen" in normalized:
-                return sentence
-        return None
 
     def _degree_required(self, text: str, fallback: str | None) -> Degree:
         normalized = f"{text} {fallback or ''}".lower()

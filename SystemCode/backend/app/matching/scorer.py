@@ -78,14 +78,6 @@ class RecommendationScorer:
         reasons: list[str] = []
         eligible = True
 
-        if job.min_experience_years is not None:
-            candidate_years = calculate_experience_years(candidate.experiences)
-            if candidate_years < job.min_experience_years:
-                eligible = False
-                reasons.append(
-                    f"Experience below requirement: {candidate_years} < {job.min_experience_years} years."
-                )
-
         if eligible:
             reasons.append("Hard constraints passed.")
 

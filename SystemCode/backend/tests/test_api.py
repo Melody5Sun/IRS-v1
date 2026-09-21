@@ -391,14 +391,12 @@ def test_recommendations_rank_matching_job_first() -> None:
                     "title": "Software Engineer Intern",
                     "company": "Acme",
                     "description": "Build APIs with Python, FastAPI and SQL.",
-                    "min_experience_years": 1,
                 },
                 {
                     "job_id": "job-2",
                     "title": "Frontend Intern",
                     "company": "Beta",
                     "description": "Build UI with TypeScript and CSS.",
-                    "min_experience_years": 1,
                 },
             ],
         },
@@ -439,19 +437,16 @@ def test_parsed_resume_feeds_recommendations(monkeypatch: pytest.MonkeyPatch) ->
         json={
             "candidate": parsed,
             "jobs": [
-                {**job, "job_id": "junior", "min_experience_years": 1},
-                {**job, "job_id": "senior", "min_experience_years": 2},
+                {**job, "job_id": "backend"},
             ],
         },
     )
 
     assert response.status_code == 200
     items = {item["job_id"]: item for item in response.json()["recommendations"]}
-    assert items["junior"]["eligible"] is True
-    assert items["junior"]["matched_skills"] == ["fastapi", "python"]
-    assert items["junior"]["missing_skills"] == ["sql"]
-    # 候选人只有 1.0 年经验，要求 2 年的岗位应被硬约束筛掉
-    assert items["senior"]["eligible"] is False
+    assert items["backend"]["eligible"] is True
+    assert items["backend"]["matched_skills"] == ["fastapi", "python"]
+    assert items["backend"]["missing_skills"] == ["sql"]
 
 
 def test_experience_years_merges_overlaps_and_handles_partial_dates() -> None:

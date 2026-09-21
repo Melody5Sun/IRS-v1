@@ -11,8 +11,6 @@ Degree = Literal["bachelor", "master", "phd", "diploma", "not_applicable", "not_
 EducationEntryType = Literal["degree", "exchange"]
 CandidateType = Literal["student", "new_graduate", "experienced", "not_stated"]
 RemotePolicy = Literal["onsite", "hybrid", "remote", "not_stated"]
-VisaSponsorship = Literal["provided", "not_provided", "not_stated"]
-SeniorityLevel = Literal["intern", "entry_level", "junior", "mid", "senior", "not_stated"]
 RequirementImportance = Literal["required", "preferred"]
 ConstraintStatus = Literal["passed", "failed", "unknown"]
 

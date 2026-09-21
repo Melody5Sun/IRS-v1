@@ -5,6 +5,10 @@ import sqlite3
 
 from app.db.sqlite import connect, initialize_database
 from app.ingestion.source_registry import JobSource
+from app.parsers.job_industry_classifier import (
+    classify_company_industry,
+    normalize_company_name,
+)
 from app.schemas.job import (
     CompanyDiscoveryStatus,
     JobDiscoveryPreview,
@@ -109,16 +113,28 @@ class JobRepository:
         with self._connect() as connection:
             connection.execute(
                 """
+                INSERT INTO company_industries (normalized_company, company, industry)
+                VALUES (?, ?, ?)
+                ON CONFLICT(normalized_company) DO UPDATE SET
+                    company = excluded.company,
+                    industry = excluded.industry
+                """,
+                (
+                    normalize_company_name(document.company),
+                    document.company,
+                    classify_company_industry(document.company),
+                ),
+            )
+            connection.execute(
+                """
                 INSERT INTO job_analysis (
                     job_id, summary, responsibilities_json, required_skills_json,
                     preferred_skills_json, employment_type,
-                    candidate_type, seniority_level, remote_policy,
-                    visa_sponsorship, work_authorization_notes, degree_required,
-                    major_required_json, keywords_json,
-                    source_evidence_json, analysis_version, analysis_method,
-                    analyzed_at, analysis_json
+                    candidate_type, remote_policy,
+                    degree_required, major_required_json, keywords_json,
+                    source_evidence_json, analysis_json
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(job_id) DO UPDATE SET
                     summary = excluded.summary,
                     responsibilities_json = excluded.responsibilities_json,
@@ -126,17 +142,11 @@ class JobRepository:
                     preferred_skills_json = excluded.preferred_skills_json,
                     employment_type = excluded.employment_type,
                     candidate_type = excluded.candidate_type,
-                    seniority_level = excluded.seniority_level,
                     remote_policy = excluded.remote_policy,
-                    visa_sponsorship = excluded.visa_sponsorship,
-                    work_authorization_notes = excluded.work_authorization_notes,
                     degree_required = excluded.degree_required,
                     major_required_json = excluded.major_required_json,
                     keywords_json = excluded.keywords_json,
                     source_evidence_json = excluded.source_evidence_json,
-                    analysis_version = excluded.analysis_version,
-                    analysis_method = excluded.analysis_method,
-                    analyzed_at = excluded.analyzed_at,
                     analysis_json = excluded.analysis_json
                 """,
                 (
@@ -147,18 +157,12 @@ class JobRepository:
                     json.dumps(document.preferred_skills, ensure_ascii=False),
                     document.employment_type,
                     document.candidate_type,
-                    document.seniority_level,
                     document.remote_policy,
-                    document.visa_sponsorship,
-                    document.work_authorization_notes,
                     document.degree_required,
                     json.dumps(document.major_required, ensure_ascii=False),
                     json.dumps(document.keywords, ensure_ascii=False),
                     json.dumps(document.source_evidence, ensure_ascii=False),
-                    document.analysis_version,
-                    document.analysis_method,
-                    document.analyzed_at.isoformat() if document.analyzed_at else None,
-                    document.model_dump_json(),
+                    document.model_dump_json(exclude={"industry"}),
                 ),
             )
 
