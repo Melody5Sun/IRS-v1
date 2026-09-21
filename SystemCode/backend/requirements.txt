@@ -1,3 +1,10 @@
+# 后端依赖。本地环境统一用 Conda 环境 careerpilot-backend（Python 3.11，与 CI 一致）
+# 首次配置（在仓库根目录执行）：
+#   conda create -n careerpilot-backend python=3.11 -y
+#   conda activate careerpilot-backend
+#   python -m pip install -r SystemCode/backend/requirements.txt
+# 已有环境、依赖有更新时：conda activate careerpilot-backend 后重新执行上面的 pip install
+
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 pydantic-settings==2.6.1
@@ -7,3 +14,5 @@ pdfminer.six==20240706
 httpx==0.28.1
 openai==3.14.0
 pytest==8.3.4
+# 规则引擎（app/rule_engine）；它锁定的 frozendict==1.2 在 Python 3.10+ 需要兼容补丁，已在 rules.py 里处理
+experta==1.9.4
