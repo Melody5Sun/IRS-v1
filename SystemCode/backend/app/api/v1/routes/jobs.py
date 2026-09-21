@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from fastapi import APIRouter, HTTPException
 
 from app.ingestion.job_sync_service import JobSyncService
@@ -17,8 +19,13 @@ from app.services.job_service import JobService
 router = APIRouter()
 job_service = JobService()
 job_repository = JobRepository()
-job_sync_service = JobSyncService(repository=job_repository)
 job_requirement_service = JobRequirementService(repository=job_repository)
+
+
+# JobSyncService 构造时会读写数据库，延迟到第一次请求再创建，避免 import app 就改写 data/careerpilot.db
+@lru_cache
+def get_job_sync_service() -> JobSyncService:
+    return JobSyncService(repository=job_repository)
 
 
 @router.post("/analyze", response_model=JobAnalysis)
@@ -39,14 +46,14 @@ def list_jobs(status: str = "active", company: str | None = None, limit: int = 1
 
 @router.get("/sources", response_model=CompanySourceResponse)
 def list_company_sources(enabled_only: bool = False) -> CompanySourceResponse:
-    job_repository.ensure_company_sources(job_sync_service.sources)
+    job_repository.ensure_company_sources(get_job_sync_service().sources)
     sources = job_repository.list_company_sources(enabled_only=enabled_only)
     return CompanySourceResponse(sources=[CompanySource(**source.__dict__) for source in sources])
 
 
 @router.post("/sync", response_model=JobSyncResponse)
 def sync_jobs() -> JobSyncResponse:
-    return job_sync_service.sync()
+    return get_job_sync_service().sync()
 
 
 @router.post("/{job_id}/analyze-requirements", response_model=JobRequirementDocument)

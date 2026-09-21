@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 from pathlib import Path
+import sqlite3
 
 from app.db.sqlite import connect, initialize_database
 from app.ingestion.source_registry import JobSource
@@ -15,11 +16,18 @@ from app.schemas.job import (
 class JobRepository:
     def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path
-        initialize_database(db_path)
+        # 延迟到第一次真正访问数据库时才建表/迁移，避免 import app 时就改写 data/careerpilot.db
+        self._initialized = False
+
+    def _connect(self) -> sqlite3.Connection:
+        if not self._initialized:
+            initialize_database(self.db_path)
+            self._initialized = True
+        return connect(self.db_path)
 
     def upsert_many(self, jobs: list[JobPosting]) -> int:
         changed_count = 0
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             for job in jobs:
                 existing = connection.execute(
                     "SELECT content_hash FROM jobs WHERE source = ? AND external_id = ?",
@@ -85,12 +93,12 @@ class JobRepository:
         query += " ORDER BY collected_at DESC LIMIT ?"
         params.append(limit)
 
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             rows = connection.execute(query, params).fetchall()
         return [self._row_to_job(row) for row in rows]
 
     def get_job(self, job_id: int) -> JobPosting | None:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             row = connection.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return self._row_to_job(row) if row else None
 
@@ -98,7 +106,7 @@ class JobRepository:
         if document.job_id is None:
             raise ValueError("job_id is required before saving job analysis.")
 
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             connection.execute(
                 """
                 INSERT INTO job_analysis (
@@ -155,12 +163,12 @@ class JobRepository:
             )
 
     def count_job_analysis(self) -> int:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             row = connection.execute("SELECT COUNT(*) AS count FROM job_analysis").fetchone()
         return int(row["count"])
 
     def mark_job_inactive(self, job_id: int, reason: str | None = None) -> None:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             row = connection.execute("SELECT raw_json FROM jobs WHERE id = ?", (job_id,)).fetchone()
             raw_json = {}
             if row is not None:
@@ -179,7 +187,7 @@ class JobRepository:
 
     def ensure_company_sources(self, sources: list[JobSource]) -> None:
         now = datetime.now().astimezone().isoformat()
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             for source in sources:
                 connection.execute(
                     """
@@ -213,7 +221,7 @@ class JobRepository:
             query += " WHERE enabled = ?"
             params.append(1)
         query += " ORDER BY priority ASC, company ASC, name ASC"
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             rows = connection.execute(query, params).fetchall()
         return [
             JobSource(
@@ -233,7 +241,7 @@ class JobRepository:
         status: str,
         message: str | None = None,
     ) -> None:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             connection.execute(
                 """
                 UPDATE company_sources
@@ -252,7 +260,7 @@ class JobRepository:
 
     def upsert_discovery_previews(self, previews: list[JobDiscoveryPreview]) -> int:
         changed_count = 0
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             for preview in previews:
                 existing = connection.execute(
                     """
@@ -310,7 +318,7 @@ class JobRepository:
         status: str = "preview",
         limit: int = 100,
     ) -> list[JobDiscoveryPreview]:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             rows = connection.execute(
                 """
                 SELECT *
@@ -324,7 +332,7 @@ class JobRepository:
         return [self._row_to_discovery_preview(row) for row in rows]
 
     def clear_all_job_data(self) -> None:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             connection.execute("DELETE FROM job_match_features")
             connection.execute("DELETE FROM job_analysis")
             connection.execute("DELETE FROM jobs")
@@ -342,7 +350,7 @@ class JobRepository:
         normalized_company: str,
         provider: str,
     ):
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             return connection.execute(
                 """
                 SELECT *
@@ -362,7 +370,7 @@ class JobRepository:
         jobs_found_count: int = 0,
         message: str | None = None,
     ) -> None:
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             connection.execute(
                 """
                 INSERT INTO company_discovery_status (
@@ -402,7 +410,7 @@ class JobRepository:
             params.append(provider)
         query += " ORDER BY checked_at DESC LIMIT ?"
         params.append(limit)
-        with connect(self.db_path) as connection:
+        with self._connect() as connection:
             rows = connection.execute(query, params).fetchall()
         return [self._row_to_company_discovery_status(row) for row in rows]
 
