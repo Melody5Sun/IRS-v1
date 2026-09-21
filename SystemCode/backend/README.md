@@ -60,6 +60,13 @@ local SQLite database. Use `GET /api/v1/jobs` to list active jobs and
 Use `POST /api/v1/matches/skills` to calculate the implemented skill-score
 components from a formatted resume and a structured JD. See
 [`docs/skill-matching-score.md`](docs/skill-matching-score.md) for the formula.
+
+Use `POST /api/v1/rules-screening` with a `UserProfile` body to run the
+hard-constraint rule engine over all analysed jobs; it returns the jobs that
+passed as `JobRequirementDocument`s plus per-rule rejection counts. Use
+`POST /api/v1/ranking` with the same body to run the rule engine and then score
+every passed job with `POST /api/v1/matches/skills`, sorted by `partial_score`.
+See [`app/rule_engine/README.md`](app/rule_engine/README.md) for the rules.
 Runtime database files such as `data/careerpilot.db` are ignored by Git.
 
 ## MIND knowledge graph

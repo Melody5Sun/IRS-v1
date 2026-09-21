@@ -1,9 +1,11 @@
 # IRS Project Primer
 
-> 最后更新: 2026-09-17（真实 LLM 简历解析已跑通）
+> 最后更新: 2026-09-21（规则引擎接入 API：`/rules-screening` + `/ranking`）
 
 ## ⏭️ 下一步
-- [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `GET/PUT /profile` → `/recommendations`，检查推荐理由质量（解析质量本身已用真实简历验证过，见下）
+- [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `GET/PUT /profile` → `POST /ranking`，检查排序结果和技能评分质量（解析质量本身已用真实简历验证过，见下）
+- [ ] 与 DB 同事对齐：`classify_company_industry` 对词典外公司返回默认 "Software & IT Services"（"没查到"被当成"查到了"），最终 ~1000 条数据公司变多后，规则 6 会据此静默剔除这些岗位；建议词典外返回 `not_stated`。最终数据到位后用合成画像重跑 `python -m app.rule_engine <profile.json> data/careerpilot.db --stats`
+- [ ] 待讨论怎么开发（规则层扩展）：**A** 更多硬约束——`deadline_at`/`posted_at`/`min_experience_years`/`visa`/`seniority` 已被 schema 迁移有意删除，做之前先定数据侧是否加回；另需先定 `target_roles/target_industries` 由规则硬筛还是由评分文档预留的 35 分（职业意向契合度）软评。**B** 简历改写的事实一致性检查器（校验 LLM 改写要点里的技能/数字/公司/日期是否有原简历证据）。**D** 技能差距 → 建议/准备进度推导，若做成多层推导，是 Experta 前向链最能体现价值的地方
 - [ ] 画像持久化到数据库（目前存在内存里）
 - [ ] 求职约束（目标岗位/行业/工作模式）参与推荐：JD schema 还没有这几个字段
 - [ ] 将已加载的 MIND 图谱接入简历/JD 技能标准化与匹配评分
@@ -29,12 +31,12 @@
   - `AI & Machine Learning` 分类补充了生成式 AI/Agent 浪潮下的新岗位（AI Engineer、Generative AI Engineer、LLM Engineer、Prompt Engineer、Agent Engineer、MLOps Engineer、AI Solutions Architect），其他分类也补了 AI Product Manager、AI Governance & Compliance Specialist、Forward Deployed Engineer、Data Annotator，参考 2026 年 LinkedIn Jobs on the Rise 等招聘趋势报道
 - `SYSTEM_PROMPT` 重写为英文：逐字段说明、禁止编造、强制英文输出，约 838 token
 - 测试 `test_system_prompt_covers_every_schema_field`：schema 字段和 prompt 不同步时直接失败
-- 推荐基线：技能关键词交集打分 + 硬约束（经验年限）
+- 旧推荐基线 `/recommendations`：技能关键词交集打分，`min_experience_years` 硬约束已随 27d2066 删除；已被下面的 `/ranking` 取代，代码保留未动
 - JD 数据链路：从公开 ATS/API 同步岗位到 SQLite，支持结构化要求解析、持久化和失效岗位处理
 - MIND 技能知识图谱：固定 3,333 个技能和 974 个概念的版本快照，应用启动时完成校验与内存加载
 - 简历解析 → 推荐已打通：`/recommendations` 的 `candidate` 直接接收 `ResumeDocument`。技能用 JD 同一套词表归一化；经验年限按 experiences 日期的月份并集计算，重叠不重复算
 - 代码结构整理（PR #8，已合并到 main）：OpenAI 兼容客户端（`ChatClient`/`OpenAICompatibleClient`）从 `llm_resume_parser.py` 拆到 `app/services/openai_client_service.py`；简历解析文件（`llm_resume_parser.py`、`resume_parser.py`）从 `app/parsers/` 提到顶层 `app/resume/`，和 `api`/`core`/`knowledge`/`parsers`/`services` 平级；合并后 `python -m pytest tests/ -q` 全量 27 个测试通过
-- GitHub Actions CI 运行 backend pytest（PR #2，只对目标为 main 的 PR 和 push 触发）；当前共 29 个测试
+- GitHub Actions CI 运行 backend pytest（PR #2，只对目标为 main 的 PR 和 push 触发）；当前共 94 个测试
 - `launch.json` 配置好后端启动（PR #5，已合并）；`config.py` 固定读取 `SystemCode/backend/.env`，从任何目录启动都能读到
 - `settings.json` 的 deny 规则禁止 Claude 读取 `.env`、打印环境变量
 - `PATCH /api/v1/profile`：局部更新画像，只传要改的字段（类似 JSON Merge Patch，`profile_service.merge_patch`），不跑 `PUT` 的“非空”校验，但仍跑 pydantic 字段校验（枚举范围等），非法值 422；无画像时和 `GET` 一样 404
@@ -43,7 +45,9 @@
   - `ResumeUpload.tsx` 调 `POST /resumes/parse-pdf` 后把结果存进 localStorage；`ProfileForm.tsx` 读 `GET /profile/options` 渲染目标岗位/行业下拉框 + 工作模式/工作类型（正职/实习）勾选框，点“保存画像”调 `PUT /profile` 整体保存；本地跑通需要先起 `backend`（8000）和 `frontend`（5173，已加进 `launch.json`），backend 已加 CORS 放行 `localhost:5173`
   - `npm run test`（vitest + jsdom）覆盖 `profileStorage.ts` 的空值/保留/裁剪三个行为；`PUT /profile` 的完整链路（选目标岗位/行业、勾工作模式和工作类型、保存）已用真实浏览器交互 + 真实后端手动验证通过
 - 真实 Gemini LLM 简历解析已跑通：`SystemCode/backend/.env` 配好 `LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 后，用一份真实 PDF 简历直接 `POST /resumes/parse-pdf` 返回了结构完整的 `ResumeDocument`（姓名/邮箱/电话/多段经历/项目/教育背景全部正确抽取），解析结果也用真实前端代码验证过能正确存进 localStorage
-- 硬约束规则引擎 `app/rule_engine/`（Experta，独立于 FastAPI，尚未接入 API）：6 条规则（状态/学历/工作模式/雇佣类型/候选人类型/行业），入口 `filter_jobs(profile, db_path) -> {"job_ids": [...]}`，CLI `python -m app.rule_engine <profile.json> <db> [--stats]`；规则清单和新增方法见该目录 README；`tests/test_rule_engine.py` 共 41 个用例
+- 硬约束规则引擎 `app/rule_engine/`（Experta，包本身不依赖 FastAPI；课程要求 Decision automation 选 "Business rules & process OR Knowledge-based reasoning"，所以保留 Experta）：6 条规则（状态/学历/工作模式/雇佣类型/候选人类型/行业），`filter_jobs` 输出 job_ids，`screen_jobs` 输出通过筛选的 `JobRequirementDocument` + 统计，CLI 支持 `--stats`/`--documents`；规则清单和新增方法见该目录 README
+- 修复：27d2066 把 `industry` 从 `job_analysis` 删掉、改存公司级 `company_industries` 后，规则 6 曾静默失效（测试自带 DDL 与真实 schema 脱节所以全绿）。现在按 `normalize_company_name(jobs.company)` 查 `company_industries`，读不到该表会打 WARNING；测试库改由 `tests/job_db.py` 用真实 `schema.sql` 建表
+- 三个接口（请求体都是 `UserProfile`，与 `GET /profile` 返回同形）：`POST /api/v1/rules-screening`（规则引擎，返回通过的岗位文档 + `total_jobs/passed_count/rejected_by_rule`）；`POST /api/v1/matches/skills`（技能评分，未改）；`POST /api/v1/ranking`（入口：进程内先调规则筛选、再对每个通过的岗位调技能评分，按 `partial_score` 降序返回 `RankedJob{job_id, company, title, skill_score}`）。真实库 + 合成画像端到端验证：105 个岗位 → 62 通过，`/ranking` 约 260 ms；规则引擎单独实测 1000 条合成岗位约 0.4 s
 
 ## 📖 需要先读
 - [CLAUDE.md](../CLAUDE.md) — 项目完整指南
@@ -53,8 +57,8 @@
 - JD 和候选人的技能匹配目前仍依赖 `skill_lexicon.py`；MIND 图谱已经加载，但尚未接入提取和评分
 - MIND 上游少量 `impliesKnowingSkills` 关系指向未定义技能，加载器会统计但不会阻断应用启动
 - 画像只存在进程内存里，后端重启后需要重新上传简历或 PUT；求职约束暂时不参与推荐
-- 提案「决策自动化」里提到的签证约束已按需求删除，目前硬约束只剩经验年限
-- 经验年限：只写了年份的日期按整年算，同一年起止的短经历会被高估；学历要求（`degree_required`）还没参与硬约束
+- 提案「决策自动化」里提到的签证约束已按需求删除；经验年限、截止日期也已从岗位 schema 删除，规则层目前只有 6 条（见上）
+- `/ranking` 的 `partial_score` 最高 65（职责相似度、职业意向契合度未实现），不是最终匹配分
 - 前端最小工程已打通“上传简历→解析→localStorage 缓存→编辑求职约束→PUT 保存画像”全链路，但没有接 `PATCH /profile`（只用 `PUT` 整体保存），也没有登录态/多用户概念；`SystemCode/frontend/IT CareerPilot demo.html` 仍是独立的静态打包文件，两者未打通
 - 仓库里没有样例简历，prompt 效果只能靠各自本地的真实简历人工验证
 - 后端使用 Conda 环境 `careerpilot-backend`；依赖安装命令为 `conda activate careerpilot-backend` 后执行 `python -m pip install -r SystemCode/backend/requirements.txt`

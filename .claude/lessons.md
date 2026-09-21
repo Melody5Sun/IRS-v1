@@ -8,6 +8,8 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-21] | 上游 schema 把 `job_analysis.industry` 删掉、改存公司级 `company_industries` 后，规则引擎规则 6（行业）静默失效：`SELECT a.*` 读不到该列，Experta 的模式匹配不上就不触发，既不报错也不筛选（单选 AI 行业的画像该剔除 103/105，实际剔除 0），而 41 个测试全绿 | ① 测试造库要用真实的 `app/db/schema.sql`（`tests/job_db.py` 的 `make_db`），不要在测试里另写一份 DDL，否则 schema 一变测试就和真实结构脱节；② 规则依赖的数据来源读不到时必须打 WARNING（Experta 规则的缺失字段是静默不匹配，不会抛异常）；③ 别人改 schema 后，用合成画像在真实库上跑一次 `--stats`，看各规则的剔除数是不是全为 0 | SystemCode/backend/app/rule_engine/engine.py, SystemCode/backend/tests/job_db.py
+
 [2026-09-21] | Experta 1.9.4 在 Python 3.10+ 导入即报 `AttributeError: module 'collections' has no attribute 'Mapping'` | Experta 硬性锁定 `frozendict==1.2`（该版本用了已移除的 `collections.Mapping`）；强装 frozendict 2.x 会与锁定冲突，最省事的做法是在导入 experta 前执行 `collections.Mapping = collections.abc.Mapping`，保留原依赖不动 | 规则引擎选型 spike
 [2026-09-21] | durable_rules 2.0.28 在 Windows 上 `DLL load failed ... 文件名或扩展名太长`；换短路径后在 Python 3.12 上只要规则引用另一个 fact（join）就必然 segfault，3.11 正常 | durable_rules 自 2020 年未更新、PyPI 只有源码包，项目 venv 是 3.12，不要选用；venv 放在长路径（如 scratchpad）下会触发 Windows MAX_PATH 限制 | 规则引擎选型 spike
 
