@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import re
 
-from app.parsers.job_skill_parser import find_job_skill_matches
+from app.parsers.text_parser import find_skill_matches
 from app.schemas.common import (
     CandidateType,
     Degree,
@@ -223,7 +223,7 @@ class JobRequirementParser:
         for sentence in sentences:
             normalized_sentence = sentence.lower()
             importance = self._skill_importance(normalized_sentence)
-            for skill, _alias in find_job_skill_matches(sentence):
+            for skill, _alias in find_skill_matches(sentence):
                 target = preferred if importance == "preferred" else required
                 other = required if importance == "preferred" else preferred
                 if skill not in target and skill not in other:

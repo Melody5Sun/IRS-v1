@@ -56,6 +56,10 @@ http://127.0.0.1:8000/docs
 Use `POST /api/v1/jobs/sync` to fetch supported public job sources into the
 local SQLite database. Use `GET /api/v1/jobs` to list active jobs and
 `POST /api/v1/jobs/{job_id}/analyze-requirements` to create a structured JD.
+
+Use `POST /api/v1/matches/skills` to calculate the implemented skill-score
+components from a formatted resume and a structured JD. See
+[`docs/skill-matching-score.md`](docs/skill-matching-score.md) for the formula.
 Runtime database files such as `data/careerpilot.db` are ignored by Git.
 
 ## MIND knowledge graph
