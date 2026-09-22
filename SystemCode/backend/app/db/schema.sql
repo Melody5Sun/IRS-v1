@@ -147,3 +147,22 @@ CREATE TABLE IF NOT EXISTS resume_uploads (
     resume_json TEXT NOT NULL,
     uploaded_at TEXT NOT NULL
 );
+
+-- 面试题库，供后续和 JD/候选人做标签匹配（技能/关键词）与语义匹配（embedding）
+CREATE TABLE IF NOT EXISTS interview_questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    question_text TEXT NOT NULL,
+    standard_answer TEXT NOT NULL DEFAULT '',
+    difficulty_level TEXT NOT NULL DEFAULT 'not_stated',
+    company TEXT,
+    published_at TEXT,
+    collected_at TEXT NOT NULL,
+    question_embedding_json TEXT,
+    skills_json TEXT NOT NULL DEFAULT '[]',
+    keywords_json TEXT NOT NULL DEFAULT '[]',
+    UNIQUE(source, external_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_interview_questions_company ON interview_questions(company);

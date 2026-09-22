@@ -8,6 +8,9 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-22] | 本机（本 Claude Code 会话的 Bash 工具，Git Bash）没有 `conda` 命令，`conda activate` 直接报 `command not found` | conda 装在 `D:\APP\Downloads\anaconda3`（未加进这个 shell 的 PATH），`careerpilot-backend` 环境的解释器在 `D:/APP/Downloads/anaconda3/envs/careerpilot-backend/python.exe`，直接用完整路径调用即可，不依赖 `conda activate` | 本机环境
+[2026-09-22] | 用 Git Bash 的 `/c/...`、`/tmp/...` 这类 POSIX 路径给原生 Windows `python.exe` 的 `sqlite3.connect()` 传参，只在**直接作为命令行参数**时才会被 Git Bash 自动转换成 Windows 路径；一旦路径是嵌在 `python -c "..."` 的脚本文本里（字符串字面量），就不会被转换，导致 `sqlite3.OperationalError: unable to open database file` | 传给原生 Windows 可执行文件、且不是独立命令行参数的路径，一律手写成 `C:/Users/...` 这种带盘符的正斜杠形式（Windows API 原生支持正斜杠），不要依赖 Git Bash 的路径自动转换 | 本机环境
+
 [2026-09-21] | 上游 schema 把 `job_analysis.industry` 删掉、改存公司级 `company_industries` 后，规则引擎规则 6（行业）静默失效：`SELECT a.*` 读不到该列，Experta 的模式匹配不上就不触发，既不报错也不筛选（单选 AI 行业的画像该剔除 103/105，实际剔除 0），而 41 个测试全绿 | ① 测试造库要用真实的 `app/db/schema.sql`（`tests/job_db.py` 的 `make_db`），不要在测试里另写一份 DDL，否则 schema 一变测试就和真实结构脱节；② 规则依赖的数据来源读不到时必须打 WARNING（Experta 规则的缺失字段是静默不匹配，不会抛异常）；③ 别人改 schema 后，用合成画像在真实库上跑一次 `--stats`，看各规则的剔除数是不是全为 0 | SystemCode/backend/app/rule_engine/engine.py, SystemCode/backend/tests/job_db.py
 
 [2026-09-21] | Experta 1.9.4 在 Python 3.10+ 导入即报 `AttributeError: module 'collections' has no attribute 'Mapping'` | Experta 硬性锁定 `frozendict==1.2`（该版本用了已移除的 `collections.Mapping`）；强装 frozendict 2.x 会与锁定冲突，最省事的做法是在导入 experta 前执行 `collections.Mapping = collections.abc.Mapping`，保留原依赖不动 | 规则引擎选型 spike

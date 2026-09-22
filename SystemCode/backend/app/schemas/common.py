@@ -13,6 +13,7 @@ CandidateType = Literal["student", "new_graduate", "experienced", "not_stated"]
 RemotePolicy = Literal["onsite", "hybrid", "remote", "not_stated"]
 RequirementImportance = Literal["required", "preferred"]
 ConstraintStatus = Literal["passed", "failed", "unknown"]
+DifficultyLevel = Literal["easy", "medium", "hard", "not_stated"]
 
 
 class Location(BaseModel):
