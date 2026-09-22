@@ -8,6 +8,8 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-22] | agent-interview-hub 导入的 83 条面试题里有 8 条 `standard_answer` 结尾拼进了下一个小节的 markdown 标题（如 "...兜底机制\n\n---\n\n## 二、大模型基础"），原始导入脚本没保留、事后无法复现问题根因，只能推测是按 "### Q:" 分块时把最后一题一路吃到了下一个 `##` 大标题 | 用markdown 做数据导入时，每题的正文边界不能只用"下一个同级标题"兜底，要同时按更高级的标题（如 `##`/`---`分隔线）做二次截断；批量导入后应抽样或全量 grep 一下 `---`、`^##` 这类章节标记有没有混进正文字段，而不是假设解析器一定按预期切好了 | SystemCode/backend/data/careerpilot.db（interview_questions 表）
+
 [2026-09-22] | 本机（本 Claude Code 会话的 Bash 工具，Git Bash）没有 `conda` 命令，`conda activate` 直接报 `command not found` | conda 装在 `D:\APP\Downloads\anaconda3`（未加进这个 shell 的 PATH），`careerpilot-backend` 环境的解释器在 `D:/APP/Downloads/anaconda3/envs/careerpilot-backend/python.exe`，直接用完整路径调用即可，不依赖 `conda activate` | 本机环境
 [2026-09-22] | 用 Git Bash 的 `/c/...`、`/tmp/...` 这类 POSIX 路径给原生 Windows `python.exe` 的 `sqlite3.connect()` 传参，只在**直接作为命令行参数**时才会被 Git Bash 自动转换成 Windows 路径；一旦路径是嵌在 `python -c "..."` 的脚本文本里（字符串字面量），就不会被转换，导致 `sqlite3.OperationalError: unable to open database file` | 传给原生 Windows 可执行文件、且不是独立命令行参数的路径，一律手写成 `C:/Users/...` 这种带盘符的正斜杠形式（Windows API 原生支持正斜杠），不要依赖 Git Bash 的路径自动转换 | 本机环境
 

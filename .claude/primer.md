@@ -1,9 +1,9 @@
 # IRS Project Primer
 
-> 最后更新: 2026-09-22（补充导入 Devinterview.io 面试题，面试题库达到 215 条）
+> 最后更新: 2026-09-22（回填最早 83 条面试题的中英双语和 role，全库 215 条数据完整）
 
 ## ⏭️ 下一步
-- [ ] 最早的 83 道面试题（agent-interview-hub 导入）仍是本次改造前的旧状态：`question_text_en`/`standard_answer_en`/`role` 是 NULL，`keywords_json` 是旧的中文小节标题（如 "一、Agent 核心面试题"），不是真正的关键词；下次批量导入新数据源时一并回填（直接生成好中英文两版文本 + 英文关键词 + `TARGET_ROLES` 里匹配的 `role`，写库时一次性带上，不在后端加翻译服务）
+- [ ] 最早的 83 道面试题（agent-interview-hub 导入）的 `keywords_json` 仍是旧的中文小节标题（如 "一、Agent 核心面试题"），不是真正的关键词——`question_text_en`/`standard_answer_en`/`role` 已经回填完，只剩这一项历史遗留问题没修
 - [ ] 0voice 仓库只有 110 道可用的结构化题目（远少于最初设想的约 200）：`01.阿里篇`(29)/`02.华为篇`(12)/`03.百度篇`(2)/`05.美团篇`(1)/`06.头条篇`(1)/`08.京东篇`(1)/`09.MySQL篇`(10)/`10.Redis篇`(10)/`11.MongoDB篇`(25)/`12.Zookeeper篇`(19)；其余"公司篇"目录（腾讯/滴滴/Nginx/算法/内存/CPU/磁盘/网络通信/安全/并发）只有占位 `.gitkeep`，`21.面经` 是非结构化的个人面经叙述（未导入）
 - [ ] Devinterview-io 每个仓库的 README 只公开前 15 道题的完整答案（第 16 题起要跳转官网付费查看），本次只从 11 个仓库各挑了 1~2 道凑够 200+；如果还想从这个组织继续补充，同一个仓库最多还能再挖 13 道左右（已用掉的 repo：python/sql/java/react/aws/docker/javascript/data-structures/software-architecture/golang/node-interview-questions），还有 20 多个未碰过的仓库（typescript/css/html5/mongodb/microservices/concurrency/django/net-core/computer-vision/express/nlp/oop 等）
 - [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `GET/PUT /profile` → `POST /ranking`，检查排序结果和技能评分质量（解析质量本身已用真实简历验证过，见下）
@@ -55,6 +55,7 @@
 - 面试题库改为中英双语存储：删除未使用的 `published_at` 列，新增 `question_text_en`/`standard_answer_en` 列（迁移逻辑同 `job_analysis` 已有的 `_drop_column_if_exists` 模式，新增 `_add_column_if_not_exists`，见 `app/db/sqlite.py`）。**这两列只是普通可空字段，仓库层不做任何自动翻译/LLM 调用**——按用户要求，双语内容由人工/Claude 在导入数据时直接生成好再写库，不放进后端代码里。另新增 `role` 列（可空 TEXT），取值限定在 `app/schemas/profile.py` 的 `TARGET_ROLES`（`TARGET_ROLE_CATEGORIES` 展平后的岗位清单）范围内，没有匹配的岗位就存 `NULL`；校验逻辑在 `InterviewQuestion` 的 `field_validator`（`app/schemas/interview_question.py`），和 `JobSearchConstraints.target_roles` 复用同一份清单。真实库 `data/careerpilot.db` 已跑过迁移（83 条旧数据的 `question_text_en`/`standard_answer_en`/`role` 目前都是 NULL，见下面"下一步"）
 - 从 [0voice/interview_internal_reference](https://github.com/0voice/interview_internal_reference) 导入 110 道面试题到 `interview_questions`（`source="0voice/interview_internal_reference"`，`external_id` 为仓库内的相对路径）：中英文问题/答案、`skills_json`、`keywords_json`（英文，风格对齐 `job_analysis.keywords_json`）、`role`（`TARGET_ROLES` 范围内或 `NULL`）、`difficulty_level`、`company` 均由 Claude 逐题人工判断/翻译后直接写库，没有调用任何 LLM 接口或新增后端代码——按用户要求，这类一次性数据导入不进后端代码，只改数据。导入脚本本身是临时脚本（在会话 scratchpad 里执行），未保留在仓库中，和 agent-interview-hub 那次导入的处理方式一致。库现在共 193 条题目（83 + 110）
 - 从 [Devinterview.io](https://github.com/orgs/Devinterview-io/repositories) 补充导入 22 道面试题（`source="Devinterview.io"`），凑够用户要求的 200+ 条：这批原文是英文，处理方向和 0voice 相反——`question_text_en`/`standard_answer_en` 直接存原文，`question_text`/`standard_answer` 是 Claude 翻译出的中文版本；覆盖 Python/SQL/Java/React/AWS/Docker/JavaScript/数据结构/软件架构/Go/Node.js 共 11 个技术方向，每个方向挑了 1~2 道，`role` 按内容映射到 `TARGET_ROLES`（如 "Frontend Developer"/"DevOps Engineer"/"Cloud Engineer"/"Software Architect"），同样没有调用任何 LLM 接口或新增后端代码。库现在共 **215** 条题目（83 + 110 + 22）
+- 回填最早导入的 83 条 agent-interview-hub 数据的 `question_text_en`/`standard_answer_en`（Claude 翻译，中→英，和 0voice 那批同方向）和 `role`（几乎全部标了 "Agent Engineer"，大模型基础/微调类题目标了 "LLM Engineer"，端侧部署/鸿蒙类标了 "Embedded Software Engineer"/"Mobile Developer (Android)"，ML Pipeline/TPU-GPU 混合架构类标了 "MLOps Engineer"）。顺带发现并修复了 8 条历史脏数据——原 markdown 转存时把下一个小节的标题（如 "---\n## 二、大模型基础"）错误地拼接进了上一题的 `standard_answer` 末尾，本次一并清理（中英文都是干净版本）。全库 215 条题目的 `question_text_en`/`standard_answer_en` 已 100% 填充；`role` 有 25 条是 `NULL`（内容过于通用、在 `TARGET_ROLES` 里找不到精确匹配，故意留空，不是遗漏）
 
 ## 📖 需要先读
 - [CLAUDE.md](../CLAUDE.md) — 项目完整指南
