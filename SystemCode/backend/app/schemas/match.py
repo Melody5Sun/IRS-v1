@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.schemas.common import ConstraintStatus
@@ -68,3 +70,31 @@ class SkillScoreResponse(BaseModel):
     direct_preferred_matches: list[DirectSkillMatch] = Field(default_factory=list)
     graph_preferred_matches: list[GraphSkillMatch] = Field(default_factory=list)
     missing_preferred_skills: list[str] = Field(default_factory=list)
+
+
+class ResponsibilityScoreRequest(BaseModel):
+    candidate: ResumeDocument
+    job: JobRequirementDocument
+
+
+class ResponsibilityEvidenceMatch(BaseModel):
+    responsibility: str
+    evidence_type: Literal["experience", "project", "research"] | None = None
+    evidence_index: int | None = Field(default=None, ge=0)
+    evidence_title: str | None = None
+    evidence_text: str | None = None
+    similarity: float = Field(..., ge=-1, le=1)
+    coverage: float = Field(..., ge=0, le=100)
+    status: Literal["matched", "partial", "missing"]
+
+
+class ResponsibilityScoreResponse(BaseModel):
+    job_id: int | None = None
+    responsibilities_calculable: bool
+    resume_evidence_available: bool
+    responsibility_count: int = Field(..., ge=0)
+    evidence_count: int = Field(..., ge=0)
+    responsibility_coverage: float = Field(..., ge=0, le=100)
+    responsibility_points: float = Field(..., ge=0, le=30)
+    matches: list[ResponsibilityEvidenceMatch] = Field(default_factory=list)
+    unmatched_responsibilities: list[str] = Field(default_factory=list)
