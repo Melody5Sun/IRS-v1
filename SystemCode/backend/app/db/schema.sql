@@ -132,3 +132,18 @@ CREATE TABLE IF NOT EXISTS company_discovery_status (
 
 CREATE INDEX IF NOT EXISTS idx_company_discovery_status_provider
 ON company_discovery_status(provider, status);
+
+-- 单用户部署：只有一行（id 固定为 1），整份 UserProfile 存成 JSON
+CREATE TABLE IF NOT EXISTS user_profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    profile_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- 每次上传解析的简历都保留一条，供用户挑选历史版本套用到当前画像
+CREATE TABLE IF NOT EXISTS resume_uploads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT,
+    resume_json TEXT NOT NULL,
+    uploaded_at TEXT NOT NULL
+);

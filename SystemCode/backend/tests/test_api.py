@@ -252,6 +252,38 @@ def test_profile_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     assert reuploaded["constraints"] == COMPLETE_PROFILE["constraints"]
 
 
+def test_resume_history_list_and_apply(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(profile_service, "profile", None)
+    _use_fake_llm(
+        monkeypatch,
+        [
+            json.dumps({"name": "Jane Tan v1"}),
+            json.dumps({"name": "Jane Tan v2"}),
+        ],
+    )
+
+    _upload_pdf("Jane Tan v1")
+    _upload_pdf("Jane Tan v2")
+
+    history = client.get("/api/v1/resumes/history").json()
+    # 按上传时间倒序，最新的在前面
+    assert [entry["name"] for entry in history] == ["Jane Tan v2", "Jane Tan v1"]
+    assert client.get("/api/v1/profile").json()["resume"]["name"] == "Jane Tan v2"
+
+    # 挑选更早的历史版本套用回当前画像
+    older_id = history[1]["id"]
+    applied = client.post(f"/api/v1/resumes/history/{older_id}/apply")
+    assert applied.status_code == 200
+    assert applied.json()["resume"]["name"] == "Jane Tan v1"
+    assert client.get("/api/v1/profile").json()["resume"]["name"] == "Jane Tan v1"
+
+
+def test_resume_history_apply_missing_id_returns_404() -> None:
+    response = client.post("/api/v1/resumes/history/999/apply")
+
+    assert response.status_code == 404
+
+
 def test_patch_profile_merges_partial_update(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(profile_service, "profile", None)
 

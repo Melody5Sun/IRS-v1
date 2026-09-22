@@ -69,3 +69,12 @@ class ParsedResume(ResumeDocument):
     """LLM 解析 PDF 的输出：比画像多一个 about，存入画像时合并进求职约束的 notes。"""
 
     about: str | None = None
+
+
+class ResumeHistoryEntry(BaseModel):
+    """一次上传解析的历史记录（列表展示用，不含完整简历内容）。"""
+
+    id: int
+    filename: str | None = None
+    name: str | None = None
+    uploaded_at: str

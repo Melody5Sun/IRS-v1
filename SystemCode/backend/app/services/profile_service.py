@@ -1,3 +1,8 @@
+from datetime import datetime, timezone
+from pathlib import Path
+import sqlite3
+
+from app.db.sqlite import connect, initialize_database
 from app.schemas.profile import JobSearchConstraints, UserProfile
 from app.schemas.resume import ParsedResume, ResumeDocument
 
@@ -49,11 +54,48 @@ def find_empty_fields(data: dict[str, object], loc: Loc | None = None) -> list[L
 
 
 class ProfileService:
-    """本地部署只有一个用户，只保存一份画像。"""
+    """本地部署只有一个用户，只保存一份画像，持久化在 user_profile 表的单行（id 固定为 1）。"""
 
-    def __init__(self) -> None:
-        # ponytail: 存在进程内存，重启即丢失；之后持久化到数据库
-        self.profile: UserProfile | None = None
+    def __init__(self, db_path: Path | None = None) -> None:
+        self.db_path = db_path
+        # 延迟到第一次真正访问数据库时才建表/迁移，避免 import app 时就改写 data/careerpilot.db
+        self._initialized = False
+        self._profile: UserProfile | None = None
+        self._loaded = False
+
+    def _connect(self) -> sqlite3.Connection:
+        if not self._initialized:
+            initialize_database(self.db_path)
+            self._initialized = True
+        return connect(self.db_path)
+
+    @property
+    def profile(self) -> UserProfile | None:
+        if not self._loaded:
+            with self._connect() as connection:
+                row = connection.execute("SELECT profile_json FROM user_profile WHERE id = 1").fetchone()
+            self._profile = UserProfile.model_validate_json(row["profile_json"]) if row else None
+            self._loaded = True
+        return self._profile
+
+    @profile.setter
+    def profile(self, value: UserProfile | None) -> None:
+        with self._connect() as connection:
+            if value is None:
+                connection.execute("DELETE FROM user_profile WHERE id = 1")
+            else:
+                connection.execute(
+                    """
+                    INSERT INTO user_profile (id, profile_json, updated_at)
+                    VALUES (1, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        profile_json = excluded.profile_json,
+                        updated_at = excluded.updated_at
+                    """,
+                    (value.model_dump_json(), datetime.now(timezone.utc).isoformat()),
+                )
+        self._profile = value
+        self._loaded = True
 
     def save_resume(self, parsed: ParsedResume) -> None:
         # 重新上传简历时只替换画像，已经填写的求职约束保留
