@@ -34,16 +34,19 @@ class InterviewQuestionRepository:
                     """
                     INSERT INTO interview_questions (
                         source, external_id, question_text, standard_answer,
-                        difficulty_level, company, published_at, collected_at,
+                        question_text_en, standard_answer_en, role,
+                        difficulty_level, company, collected_at,
                         question_embedding_json, skills_json, keywords_json
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(source, external_id) DO UPDATE SET
                         question_text = excluded.question_text,
                         standard_answer = excluded.standard_answer,
+                        question_text_en = excluded.question_text_en,
+                        standard_answer_en = excluded.standard_answer_en,
+                        role = excluded.role,
                         difficulty_level = excluded.difficulty_level,
                         company = excluded.company,
-                        published_at = excluded.published_at,
                         collected_at = excluded.collected_at,
                         question_embedding_json = excluded.question_embedding_json,
                         skills_json = excluded.skills_json,
@@ -54,9 +57,11 @@ class InterviewQuestionRepository:
                         question.external_id,
                         question.question_text,
                         question.standard_answer,
+                        question.question_text_en,
+                        question.standard_answer_en,
+                        question.role,
                         question.difficulty_level,
                         question.company,
-                        question.published_at.isoformat() if question.published_at else None,
                         question.collected_at.isoformat(),
                         json.dumps(question.question_embedding) if question.question_embedding else None,
                         json.dumps(question.skills, ensure_ascii=False),
@@ -90,9 +95,11 @@ class InterviewQuestionRepository:
             external_id=row["external_id"],
             question_text=row["question_text"],
             standard_answer=row["standard_answer"],
+            question_text_en=row["question_text_en"],
+            standard_answer_en=row["standard_answer_en"],
+            role=row["role"],
             difficulty_level=row["difficulty_level"],
             company=row["company"],
-            published_at=datetime.fromisoformat(row["published_at"]) if row["published_at"] else None,
             collected_at=datetime.fromisoformat(row["collected_at"]),
             question_embedding=json.loads(row["question_embedding_json"]) if row["question_embedding_json"] else None,
             skills=json.loads(row["skills_json"]),

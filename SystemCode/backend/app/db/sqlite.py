@@ -34,6 +34,9 @@ def initialize_database(db_path: Path | None = None) -> None:
             "analyzed_at",
         ):
             _drop_column_if_exists(connection, "job_analysis", column_name)
+        _drop_column_if_exists(connection, "interview_questions", "published_at")
+        for column_name in ("question_text_en", "standard_answer_en", "role"):
+            _add_column_if_not_exists(connection, "interview_questions", column_name, "TEXT")
         _remove_analysis_json_fields(
             connection,
             "seniority_level",
@@ -54,6 +57,17 @@ def _drop_column_if_exists(connection: sqlite3.Connection, table_name: str, colu
     }
     if column_name in columns:
         connection.execute(f"ALTER TABLE {table_name} DROP COLUMN {column_name}")
+
+
+def _add_column_if_not_exists(
+    connection: sqlite3.Connection, table_name: str, column_name: str, column_type: str
+) -> None:
+    columns = {
+        row["name"]
+        for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name not in columns:
+        connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
 
 def _remove_analysis_json_fields(connection: sqlite3.Connection, *field_names: str) -> None:
