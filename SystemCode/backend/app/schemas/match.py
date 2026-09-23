@@ -1,9 +1,10 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.common import ConstraintStatus
 from app.schemas.job import JobRequirementDocument
+from app.schemas.profile import TARGET_ROLES
 from app.schemas.resume import ResumeDocument
 
 
@@ -98,3 +99,33 @@ class ResponsibilityScoreResponse(BaseModel):
     responsibility_points: float = Field(..., ge=0, le=30)
     matches: list[ResponsibilityEvidenceMatch] = Field(default_factory=list)
     unmatched_responsibilities: list[str] = Field(default_factory=list)
+
+
+class CareerIntentScoreRequest(BaseModel):
+    target_roles: list[str] = Field(default_factory=list)
+    job: JobRequirementDocument
+
+    @field_validator("target_roles")
+    @classmethod
+    def validate_target_roles(cls, value: list[str]) -> list[str]:
+        valid_roles = frozenset(TARGET_ROLES)
+        invalid = [role for role in value if role not in valid_roles]
+        if invalid:
+            raise ValueError(f"target_roles must be chosen from TARGET_ROLES: {invalid}")
+        return list(dict.fromkeys(value))
+
+
+class StandardRoleSimilarity(BaseModel):
+    role: str
+    similarity: float = Field(..., ge=-1, le=1)
+
+
+class CareerIntentScoreResponse(BaseModel):
+    job_id: int | None = None
+    intent_calculable: bool
+    best_target_role: str | None = None
+    intent_similarity: float = Field(..., ge=-1, le=1)
+    intent_coverage: float = Field(..., ge=0, le=100)
+    career_intent_points: float = Field(..., ge=0, le=10)
+    target_role_matches: list[StandardRoleSimilarity] = Field(default_factory=list)
+    top_standard_roles: list[StandardRoleSimilarity] = Field(default_factory=list)

@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     responsibility_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     responsibility_similarity_floor: float = 0.35
     responsibility_similarity_full: float = 0.75
+    role_taxonomy_path: Path = BACKEND_ROOT / "data" / "role_taxonomy" / "roles.json"
+    role_embedding_cache_path: Path = (
+        BACKEND_ROOT / "data" / "embedding_cache" / "role_embeddings.npy"
+    )
+    role_embedding_metadata_path: Path = (
+        BACKEND_ROOT / "data" / "embedding_cache" / "role_embeddings_metadata.json"
+    )
+    career_intent_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    career_intent_similarity_floor: float = 0.40
+    career_intent_similarity_full: float = 0.85
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",

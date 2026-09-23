@@ -1,14 +1,30 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.match import SkillScoreResponse
+from app.schemas.match import (
+    CareerIntentScoreResponse,
+    ResponsibilityScoreResponse,
+    SkillScoreResponse,
+)
+
+
+class OverallScore(BaseModel):
+    calculable: bool
+    active_core_weight: float = Field(..., ge=0, le=100)
+    effective_weights: dict[str, float] = Field(default_factory=dict)
+    normalized_contributions: dict[str, float] = Field(default_factory=dict)
+    core_score: float = Field(..., ge=0, le=100)
+    preferred_bonus: float = Field(..., ge=0, le=5)
+    final_score: float = Field(..., ge=0, le=100)
 
 
 class RankedJob(BaseModel):
     job_id: int | None = None
     company: str
     title: str
-    # 技能图谱评分的原始返回；目前只含技能部分（partial_score 最高 65），不是最终匹配分
     skill_score: SkillScoreResponse
+    responsibility_score: ResponsibilityScoreResponse
+    career_intent_score: CareerIntentScoreResponse
+    overall_score: OverallScore
 
 
 class RankingResponse(BaseModel):
@@ -16,5 +32,5 @@ class RankingResponse(BaseModel):
     total_jobs: int
     passed_count: int
     rejected_by_rule: dict[str, int] = Field(default_factory=dict)
-    # 只含通过硬约束的岗位，按 skill_score.partial_score 降序
+    # 只含通过硬约束的岗位，按 overall_score.final_score 降序
     results: list[RankedJob] = Field(default_factory=list)

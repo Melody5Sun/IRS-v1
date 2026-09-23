@@ -15,8 +15,9 @@ def test_ranking_scores_only_screened_jobs_in_descending_order(screening_client:
     assert body["rejected_by_rule"] == {"industry": 1, "status": 1}
     # 被规则剔除的 3、4 号不会进入技能评分；候选人有 Python/SQL，1 号全命中，分数更高
     assert [item["job_id"] for item in body["results"]] == [1, 2]
-    scores = [item["skill_score"]["partial_score"] for item in body["results"]]
+    scores = [item["overall_score"]["final_score"] for item in body["results"]]
     assert scores[0] > scores[1]
+    assert body["results"][0]["overall_score"]["active_core_weight"] == 60.0
     assert (body["results"][0]["company"], body["results"][0]["title"]) == ("Alpha", "Backend Engineer")
 
 
