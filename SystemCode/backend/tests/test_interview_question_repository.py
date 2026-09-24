@@ -82,7 +82,7 @@ def test_empty_roles_fall_back_to_general_programming(tmp_path) -> None:
 
     repository.upsert_many([question])
 
-    assert repository.list_questions()[0].roles == ["编程基础题"]
+    assert repository.list_questions()[0].roles == ["Basic Programming Problems"]
 
 
 def test_roles_must_be_chosen_from_target_roles() -> None:

@@ -7,7 +7,7 @@ from app.schemas.profile import TARGET_ROLES
 
 
 # 题目不对应任何具体岗位（数据结构/算法、C/C++/Java/Python 语言基础等通用题）时的归类标签
-GENERAL_PROGRAMMING_ROLE = "编程基础题"
+GENERAL_PROGRAMMING_ROLE = "Basic Programming Problems"
 _ALLOWED_ROLES = frozenset(TARGET_ROLES) | {GENERAL_PROGRAMMING_ROLE}
 
 
@@ -19,7 +19,7 @@ class InterviewQuestion(BaseModel):
     standard_answer: str = ""
     question_text_en: str | None = None
     standard_answer_en: str | None = None
-    # 该题对应的目标岗位列表，取值来自 TARGET_ROLES；没有匹配的岗位时为 ["编程基础题"]
+    # 该题对应的目标岗位列表，取值来自 TARGET_ROLES；没有匹配的岗位时为 ["Basic Programming Problems"]
     roles: list[str] = Field(default_factory=lambda: [GENERAL_PROGRAMMING_ROLE])
     difficulty_level: DifficultyLevel = "not_stated"
     company: str | None = None
