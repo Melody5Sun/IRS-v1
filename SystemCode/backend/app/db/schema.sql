@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS interview_questions (
     standard_answer TEXT NOT NULL DEFAULT '',
     question_text_en TEXT,
     standard_answer_en TEXT,
-    role TEXT,
+    roles_json TEXT NOT NULL DEFAULT '[]',
     difficulty_level TEXT NOT NULL DEFAULT 'not_stated',
     company TEXT,
     collected_at TEXT NOT NULL,

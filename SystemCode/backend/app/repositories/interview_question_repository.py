@@ -34,7 +34,7 @@ class InterviewQuestionRepository:
                     """
                     INSERT INTO interview_questions (
                         source, external_id, question_text, standard_answer,
-                        question_text_en, standard_answer_en, role,
+                        question_text_en, standard_answer_en, roles_json,
                         difficulty_level, company, collected_at,
                         question_embedding_json, skills_json, keywords_json
                     )
@@ -44,7 +44,7 @@ class InterviewQuestionRepository:
                         standard_answer = excluded.standard_answer,
                         question_text_en = excluded.question_text_en,
                         standard_answer_en = excluded.standard_answer_en,
-                        role = excluded.role,
+                        roles_json = excluded.roles_json,
                         difficulty_level = excluded.difficulty_level,
                         company = excluded.company,
                         collected_at = excluded.collected_at,
@@ -59,7 +59,7 @@ class InterviewQuestionRepository:
                         question.standard_answer,
                         question.question_text_en,
                         question.standard_answer_en,
-                        question.role,
+                        json.dumps(question.roles, ensure_ascii=False),
                         question.difficulty_level,
                         question.company,
                         question.collected_at.isoformat(),
@@ -97,7 +97,7 @@ class InterviewQuestionRepository:
             standard_answer=row["standard_answer"],
             question_text_en=row["question_text_en"],
             standard_answer_en=row["standard_answer_en"],
-            role=row["role"],
+            roles=json.loads(row["roles_json"]),
             difficulty_level=row["difficulty_level"],
             company=row["company"],
             collected_at=datetime.fromisoformat(row["collected_at"]),

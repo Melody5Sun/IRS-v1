@@ -8,6 +8,8 @@
 
 <!-- 新条目追加在此行下方，最新的在最上面 -->
 
+[2026-09-24] | 跑 `pytest tests/` 在收集阶段就报 `ModuleNotFoundError: No module named 'numpy'`，连不相关的测试文件也跑不了（`.venv` 和 conda `careerpilot-backend` 两个环境都缺） | `tests/conftest.py` 导入了 ranking 路由 → `career_intent_scorer` → numpy，任何测试都会先加载它；`requirements.txt` 新增依赖后要重新 `pip install -r requirements.txt`。临时只跑某个不依赖这条链的测试文件可加 `--noconftest` | SystemCode/backend/tests/conftest.py, requirements.txt
+
 [2026-09-22] | agent-interview-hub 导入的 83 条面试题里有 8 条 `standard_answer` 结尾拼进了下一个小节的 markdown 标题（如 "...兜底机制\n\n---\n\n## 二、大模型基础"），原始导入脚本没保留、事后无法复现问题根因，只能推测是按 "### Q:" 分块时把最后一题一路吃到了下一个 `##` 大标题 | 用markdown 做数据导入时，每题的正文边界不能只用"下一个同级标题"兜底，要同时按更高级的标题（如 `##`/`---`分隔线）做二次截断；批量导入后应抽样或全量 grep 一下 `---`、`^##` 这类章节标记有没有混进正文字段，而不是假设解析器一定按预期切好了 | SystemCode/backend/data/careerpilot.db（interview_questions 表）
 
 [2026-09-22] | 本机（本 Claude Code 会话的 Bash 工具，Git Bash）没有 `conda` 命令，`conda activate` 直接报 `command not found` | conda 装在 `D:\APP\Downloads\anaconda3`（未加进这个 shell 的 PATH），`careerpilot-backend` 环境的解释器在 `D:/APP/Downloads/anaconda3/envs/careerpilot-backend/python.exe`，直接用完整路径调用即可，不依赖 `conda activate` | 本机环境

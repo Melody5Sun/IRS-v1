@@ -35,8 +35,9 @@ def initialize_database(db_path: Path | None = None) -> None:
         ):
             _drop_column_if_exists(connection, "job_analysis", column_name)
         _drop_column_if_exists(connection, "interview_questions", "published_at")
-        for column_name in ("question_text_en", "standard_answer_en", "role"):
+        for column_name in ("question_text_en", "standard_answer_en"):
             _add_column_if_not_exists(connection, "interview_questions", column_name, "TEXT")
+        _migrate_interview_role_to_roles_json(connection)
         _remove_analysis_json_fields(
             connection,
             "seniority_level",
@@ -68,6 +69,22 @@ def _add_column_if_not_exists(
     }
     if column_name not in columns:
         connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+
+
+def _migrate_interview_role_to_roles_json(connection: sqlite3.Connection) -> None:
+    # 旧库的 role 是单值文本列，改为 roles_json（JSON 数组）；先把旧值搬过去再删列，避免丢数据
+    _add_column_if_not_exists(
+        connection, "interview_questions", "roles_json", "TEXT NOT NULL DEFAULT '[]'"
+    )
+    columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(interview_questions)").fetchall()
+    }
+    if "role" in columns:
+        connection.execute(
+            "UPDATE interview_questions SET roles_json = json_array(role) WHERE role IS NOT NULL"
+        )
+        connection.execute("ALTER TABLE interview_questions DROP COLUMN role")
 
 
 def _remove_analysis_json_fields(connection: sqlite3.Connection, *field_names: str) -> None:

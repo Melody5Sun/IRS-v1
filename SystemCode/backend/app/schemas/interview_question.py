@@ -6,7 +6,9 @@ from app.schemas.common import DifficultyLevel
 from app.schemas.profile import TARGET_ROLES
 
 
-_TARGET_ROLE_SET = frozenset(TARGET_ROLES)
+# 题目不对应任何具体岗位（数据结构/算法、C/C++/Java/Python 语言基础等通用题）时的归类标签
+GENERAL_PROGRAMMING_ROLE = "编程基础题"
+_ALLOWED_ROLES = frozenset(TARGET_ROLES) | {GENERAL_PROGRAMMING_ROLE}
 
 
 class InterviewQuestion(BaseModel):
@@ -17,8 +19,8 @@ class InterviewQuestion(BaseModel):
     standard_answer: str = ""
     question_text_en: str | None = None
     standard_answer_en: str | None = None
-    # 该题对应的目标岗位，只能是 TARGET_ROLES 里的值，没有匹配的岗位就留空
-    role: str | None = None
+    # 该题对应的目标岗位列表，取值来自 TARGET_ROLES；没有匹配的岗位时为 ["编程基础题"]
+    roles: list[str] = Field(default_factory=lambda: [GENERAL_PROGRAMMING_ROLE])
     difficulty_level: DifficultyLevel = "not_stated"
     company: str | None = None
     collected_at: datetime
@@ -26,9 +28,10 @@ class InterviewQuestion(BaseModel):
     skills: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
 
-    @field_validator("role")
+    @field_validator("roles")
     @classmethod
-    def _validate_role(cls, value: str | None) -> str | None:
-        if value is not None and value not in _TARGET_ROLE_SET:
-            raise ValueError(f"role must be chosen from TARGET_ROLES or null, invalid: {value!r}")
-        return value
+    def _validate_roles(cls, value: list[str]) -> list[str]:
+        invalid = [role for role in value if role not in _ALLOWED_ROLES]
+        if invalid:
+            raise ValueError(f"roles must be chosen from TARGET_ROLES or {GENERAL_PROGRAMMING_ROLE!r}, invalid: {invalid!r}")
+        return value or [GENERAL_PROGRAMMING_ROLE]

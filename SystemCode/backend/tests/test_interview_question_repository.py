@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import sqlite3
 
 import pytest
 from pydantic import ValidationError
@@ -15,7 +16,7 @@ def make_question(external_id: str = "q-1", question_text: str = "What is an Age
         standard_answer="An LLM-driven autonomous system.",
         question_text_en=question_text,
         standard_answer_en="An LLM-driven autonomous system.",
-        role="Agent Engineer",
+        roles=["Agent Engineer", "LLM Engineer"],
         difficulty_level="medium",
         company="TestCo",
         collected_at=datetime.now(timezone.utc),
@@ -36,7 +37,7 @@ def test_upsert_many_inserts_and_lists_by_company(tmp_path) -> None:
     assert questions[0].question_text == "What is an Agent?"
     assert questions[0].question_text_en == "What is an Agent?"
     assert questions[0].standard_answer_en == "An LLM-driven autonomous system."
-    assert questions[0].role == "Agent Engineer"
+    assert questions[0].roles == ["Agent Engineer", "LLM Engineer"]
     assert questions[0].skills == ["python", "rag"]
     assert questions[0].difficulty_level == "medium"
 
@@ -75,15 +76,33 @@ def test_upsert_many_allows_missing_english_version(tmp_path) -> None:
     assert stored.standard_answer_en is None
 
 
-def test_upsert_many_allows_null_role_when_no_match(tmp_path) -> None:
+def test_empty_roles_fall_back_to_general_programming(tmp_path) -> None:
     repository = InterviewQuestionRepository(tmp_path / "careerpilot.db")
-    question = make_question().model_copy(update={"role": None})
+    question = InterviewQuestion.model_validate(make_question().model_dump() | {"roles": []})
 
     repository.upsert_many([question])
 
-    assert repository.list_questions()[0].role is None
+    assert repository.list_questions()[0].roles == ["编程基础题"]
 
 
-def test_role_must_be_chosen_from_target_roles() -> None:
+def test_roles_must_be_chosen_from_target_roles() -> None:
     with pytest.raises(ValidationError):
-        InterviewQuestion.model_validate(make_question().model_dump() | {"role": "Not A Real Role"})
+        InterviewQuestion.model_validate(make_question().model_dump() | {"roles": ["Agent Engineer", "Not A Real Role"]})
+
+
+def test_legacy_role_column_is_migrated_to_roles_json(tmp_path) -> None:
+    db_path = tmp_path / "careerpilot.db"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "CREATE TABLE interview_questions (id INTEGER PRIMARY KEY, source TEXT NOT NULL, external_id TEXT NOT NULL, "
+            "question_text TEXT NOT NULL, standard_answer TEXT NOT NULL DEFAULT '', role TEXT, "
+            "difficulty_level TEXT NOT NULL DEFAULT 'not_stated', company TEXT, collected_at TEXT NOT NULL, "
+            "question_embedding_json TEXT, skills_json TEXT NOT NULL DEFAULT '[]', keywords_json TEXT NOT NULL DEFAULT '[]', "
+            "UNIQUE(source, external_id))"
+        )
+        connection.execute(
+            "INSERT INTO interview_questions (source, external_id, question_text, role, collected_at) "
+            "VALUES ('s', 'a', 'q', 'Agent Engineer', '2026-09-24T00:00:00')"
+        )
+
+    assert InterviewQuestionRepository(db_path).list_questions()[0].roles == ["Agent Engineer"]
