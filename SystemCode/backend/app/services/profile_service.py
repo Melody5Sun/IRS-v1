@@ -1,5 +1,8 @@
+import hashlib
+
 from app.repositories.resume_history_repository import ProfileRepository, ResumeHistoryRepository
 from app.schemas.profile import UserProfile
+from app.schemas.resume import ResumeDocument
 
 # 用户提交画像时允许留空的字段，按所在段落区分（同名字段如 start_date 在不同段落规则不同）。
 # 标量字段：可以为 None/空串；列表字段：可以一条都不填，但填了的条目里字段仍要完整
@@ -25,6 +28,11 @@ Loc = list[str | int]
 
 def _is_blank(value: object) -> bool:
     return value is None or (isinstance(value, str) and not value.strip())
+
+
+def resume_hash(resume: ResumeDocument) -> str:
+    """改写稿据此判断画像简历是否在保存后改过；同一个模型的序列化结果是稳定的，不用额外规范化。"""
+    return hashlib.sha256(resume.model_dump_json().encode()).hexdigest()
 
 
 def merge_patch(base: dict[str, object], patch: dict[str, object]) -> dict[str, object]:
@@ -86,5 +94,5 @@ class ProfileService:
         return True
 
 
-# resumes / profile / ranking 路由共用同一份画像
+# resumes / profile / ranking / targets 路由共用同一份画像
 profile_service = ProfileService()

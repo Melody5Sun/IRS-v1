@@ -8,6 +8,7 @@ from app.api.routes import profile as profile_route
 from app.api.routes import ranking as ranking_route
 from app.api.routes import resumes as resumes_route
 from app.api.routes import rules_screening as rules_screening_route
+from app.api.routes import targets as targets_route
 from app.main import app
 from app.rule_engine import engine as rule_engine
 from app.schemas.profile import UserProfile
@@ -90,9 +91,10 @@ def screening_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 @pytest.fixture(autouse=True)
 def profile_service(monkeypatch: pytest.MonkeyPatch) -> ProfileService:
-    """画像 / 简历历史 / 排序三个路由共用的服务换成注入 Fake 仓库的新实例，每个测试从空画像开始，不碰真实 PostgreSQL。"""
+    """画像 / 简历历史 / 排序 / 目标岗位路由共用的服务换成注入 Fake 仓库的新实例，每个测试从空画像开始，不碰真实 PostgreSQL。"""
     service = ProfileService(FakeProfileRepository(), FakeResumeHistoryRepository())
     monkeypatch.setattr(profile_route, "profile_service", service)
     monkeypatch.setattr(resumes_route, "profile_service", service)
     monkeypatch.setattr(ranking_route, "profile_service", service)
+    monkeypatch.setattr(targets_route, "profile_service", service)
     return service

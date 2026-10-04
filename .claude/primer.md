@@ -1,11 +1,12 @@
 # IRS Project Primer
 
-> 最后更新: 2026-10-04（简历改写 RAG 修复：按问题类型检索 + 补写法类知识库条目，快照 385 条）
+> 最后更新: 2026-10-04（目标岗位后端：`target_jobs` 表 + `/targets` 接口，改写接口只对目标岗位开放）
 
 ## ⏭️ 下一步
 - [ ] 最早的 83 道面试题（agent-interview-hub 导入）的 `keywords_json` 仍是旧的中文小节标题（如 "一、Agent 核心面试题"），不是真正的关键词——`question_text_en`/`standard_answer_en`/`role` 已经回填完，只剩这一项历史遗留问题没修
 - [ ] 0voice 仓库只有 110 道可用的结构化题目（远少于最初设想的约 200）：`01.阿里篇`(29)/`02.华为篇`(12)/`03.百度篇`(2)/`05.美团篇`(1)/`06.头条篇`(1)/`08.京东篇`(1)/`09.MySQL篇`(10)/`10.Redis篇`(10)/`11.MongoDB篇`(25)/`12.Zookeeper篇`(19)；其余"公司篇"目录（腾讯/滴滴/Nginx/算法/内存/CPU/磁盘/网络通信/安全/并发）只有占位 `.gitkeep`，`21.面经` 是非结构化的个人面经叙述（未导入）
 - [ ] Devinterview-io 每个仓库的 README 只公开前 15 道题的完整答案（第 16 题起要跳转官网付费查看），本次只从 11 个仓库各挑了 1~2 道凑够 200+；如果还想从这个组织继续补充，同一个仓库最多还能再挖 13 道左右（已用掉的 repo：python/sql/java/react/aws/docker/javascript/data-structures/software-architecture/golang/node-interview-questions），还有 20 多个未碰过的仓库（typescript/css/html5/mongodb/microservices/concurrency/django/net-core/computer-vision/express/nlp/oop 等）
+- [ ] 前端对接目标岗位页（接口和四步完成条件见 `SystemCode/frontend/API.md` 页面 05；「设为目标岗位」后才能跳转改写页）
 - [ ] 前端对接新的画像流程：`parse-pdf` 响应改为整条上传记录 `{id, filename, name, uploaded_at, resume}`（about 在 `resume` 里，前端自行预填 notes）；`POST /history/{id}/apply` 已删除，换成 `GET /resumes/history/{id}`；`PUT /profile` 必须带 `resume_upload_id`；`POST /ranking` 不再传请求体、无画像时 409。现有 `ResumeUpload.tsx`/`ProfileForm.tsx`/`profileStorage.ts`（localStorage 历史）是按旧接口写的，也还没有补全简历字段的表单
 - [ ] 用真实 PDF 简历走一遍 `/parse-pdf` → `PUT /profile` → `POST /ranking`，检查排序结果和技能评分质量（解析质量本身已用真实简历验证过，见下）
 - [ ] 与 DB 同事对齐：`classify_company_industry` 对词典外公司返回默认 "Software & IT Services"（"没查到"被当成"查到了"），最终 ~1000 条数据公司变多后，规则 6 会据此静默剔除这些岗位；建议词典外返回 `not_stated`。最终数据到位后用合成画像重跑 `python -m app.rule_engine <profile.json> --stats`
@@ -67,6 +68,7 @@
 - 问题类型拆分（迁移 `20261002_0011`）：从 `weak_action_verb` 拆出 `passive_voice` / `buzzword`，6 条条目改标（action-verb-03/04、javaguide-07、ai-26、data-03、sd-38）。试过“写法类问题通用条目优先”，结果更差（hit@3 0.905→0.892）已撤销：向量按主题匹配，通用条目内部也排不准。同 78 条用例拆分前后 hit@3 0.872→0.936 / MRR 0.814→0.857。快照仍是 0010，导入后迁移自动改标
 - 测试简历入库：`SystemCode/backend/resume test/` 的 10 份 PDF（5 中 5 英）由 Claude 按 `llm_resume_parser` 同一套规则手工解析成英文 JSON，存于 `resume test/parsed/`，经 `ParsedResume` 校验后用 `ResumeHistoryRepository.add` 写入 `resume_uploads`（id 1–10，filename = 原 PDF 名）；用 `GET /resumes/history/{id}` 取出，补全后 `PUT /profile` 保存为画像。4 份测试简历本身没有姓名/联系方式，RAG_CN 的教育经历在 PDF 中缺失，均留空。已进团队快照 `careerpilot-postgresql-20261002.dump`（第二版，含迁移 0010）；`start-backend.ps1` 导入快照时把快照里的简历记录合并进队友自己的 resume_uploads（同名文件以队友的为准）
 - 简历 schema 原则：**简历里的所有内容都要存进数据库**。新增 `Project.start_date/end_date`、`Research.type`（paper/patent/software_copyright/thesis/research_project/other）、`Education.school_tier/research_direction/gpa/ranking/courses`、`Certificate.score`（CET 等考试放证书）、顶层 `awards`、技能栏原文 `skill_groups`（分类+原文描述，供简历改写用；匹配仍用扁平 `skills`）和兜底 `additional_info`（"Label: value"）；解析 prompt 去掉了"忽略奖项/GPA/课程"规则。JSONB 存储，无需迁移，旧数据按默认值读出。`PUT /profile` 的选填白名单 `OPTIONAL_FIELDS` 按段落区分（`profile_service.py`）：项目日期、研究的机构和日期、证书的颁发机构和日期选填，经历日期必填。简历经历 `employment_type` 只有 full_time/part_time/internship（和岗位侧 `schemas/common.py` 的同名类型是两套）：解析阶段可为 null，保存画像时必填；简历写的其他类型（合同工等）记进 additional_info。迁移 `20261002_0010` 把旧的 not_stated/contract/freelance 转成 null，contract/freelance 原值追加进 additional_info
+- 目标岗位（迁移 `20261004_0014`）：`target_jobs` 表（岗位 id 为主键，存申请阶段 10 档 + 自填备注 + 模拟面试完成时间 + 匹配度快照）；`GET/POST /targets`、`PATCH/DELETE /targets/{job_id}`。简历改写一步从 `resume_rewrites` 推出（none/saved/stale），提交申请一步 = `stage != not_applied`；移出目标在同一事务里删掉该岗位所有改写稿；`POST /resumes/rewrite`、`PUT /resumes/rewrites/{id}` 对非目标岗位返回 409；迁移时已有改写稿的岗位（108）自动设为目标
 
 ## 📖 需要先读
 - [CLAUDE.md](../CLAUDE.md) — 项目完整指南
@@ -75,7 +77,6 @@
 ## ⚠️ 已知限制
 - JD 和候选人的技能匹配目前仍依赖 `skill_lexicon.py`；MIND 图谱已经加载，但尚未接入提取和评分
 - MIND 上游少量 `impliesKnowingSkills` 关系指向未定义技能，加载器会统计但不会阻断应用启动
-- 求职约束暂时不参与推荐
 - 提案「决策自动化」里提到的签证约束已按需求删除；经验年限、截止日期也已从岗位 schema 删除，规则层目前只有 6 条（见上）
 - `/ranking` 的 `partial_score` 最高 65（职责相似度、职业意向契合度未实现），不是最终匹配分
 - 前端最小工程已打通“上传简历→解析→localStorage 缓存→编辑求职约束→PUT 保存画像”全链路，但没有接 `PATCH /profile`（只用 `PUT` 整体保存），也没有登录态/多用户概念；`SystemCode/frontend/IT CareerPilot demo.html` 仍是独立的静态打包文件，两者未打通

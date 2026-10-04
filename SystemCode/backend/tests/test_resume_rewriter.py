@@ -191,14 +191,28 @@ class FakeRewriteRepository:
 
 
 class FakeJobRepository:
+    """岗位 7、8 存在。"""
+
     def get_job(self, job_id: int) -> object | None:
-        return object() if job_id == 7 else None
+        return object() if job_id in (7, 8) else None
+
+
+class FakeTargetCheck:
+    """改写接口只问岗位是不是目标。"""
+
+    def __init__(self, *job_ids: int) -> None:
+        self.job_ids = set(job_ids)
+
+    def exists(self, job_id: int) -> bool:
+        return job_id in self.job_ids
 
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setattr(resumes_route, "rewrite_repository", FakeRewriteRepository())
     monkeypatch.setattr(resumes_route, "job_repository", FakeJobRepository())
+    # 岗位 7 是目标，岗位 8 存在但不是目标
+    monkeypatch.setattr(resumes_route, "target_repository", FakeTargetCheck(7))
     return TestClient(app)
 
 
@@ -211,6 +225,15 @@ def _save_profile(profile_service, upload_id: int, resume: ResumeDocument) -> No
 def test_rewrite_requires_saved_profile(client: TestClient) -> None:
     assert client.post("/api/resumes/rewrite", json={"job_id": 7}).status_code == 409
     assert client.get("/api/resumes/rewrites/7").status_code == 409
+
+
+def test_rewrite_requires_target_job(client: TestClient, profile_service) -> None:
+    resume = _resume()
+    _save_profile(profile_service, 1, resume)
+    # 岗位存在但没设为目标：改写和保存都拦下，不会调用 LLM
+    assert client.post("/api/resumes/rewrite", json={"job_id": 8}).status_code == 409
+    response = client.put("/api/resumes/rewrites/8", json=resume.model_dump())
+    assert response.status_code == 409 and response.json()["detail"] == "请先把该岗位设为目标岗位"
 
 
 def test_saved_rewrite_round_trip_stale_and_per_resume(client: TestClient, profile_service) -> None:

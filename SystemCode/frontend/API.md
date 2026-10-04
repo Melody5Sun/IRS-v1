@@ -22,8 +22,8 @@
 
 | 码 | 含义 |
 |---|---|
-| 404 | 资源不存在（岗位、上传记录、改写稿、画像） |
-| 409 | 前置条件不满足：还没保存画像 / 岗位还没有结构化分析结果 |
+| 404 | 资源不存在（岗位、上传记录、改写稿、画像、目标岗位） |
+| 409 | 前置条件不满足：还没保存画像 / 岗位还没有结构化分析结果 / 岗位还没设为目标 / 未提交申请就写进度备注 |
 | 413 | 上传音频超过 25 MB |
 | 422 | 请求校验失败 |
 | 502 | 大模型或语音转写服务出错（额度用完、服务繁忙等），提示用户稍后重试 |
@@ -34,11 +34,15 @@
 上传简历 PDF ──▶ 补全画像 + 填求职意向 ──▶ 岗位推荐（排序） ──▶ 岗位匹配详情
  parse-pdf        PUT /profile               POST /ranking         POST /jobs/{id}/match-detail
                                                   │
+                                                  ▼
+                                          设为目标岗位  POST /targets
+                                                  │
                                                   ├──▶ 简历改写      POST /resumes/rewrite → PUT /resumes/rewrites/{job_id}
-                                                  └──▶ 面试准备      sample 出题 → 录音 → transcription 转写
+                                                  ├──▶ 面试准备      sample 出题 → 录音 → transcription 转写 → PATCH /targets/{id} 标记完成
+                                                  └──▶ 申请进度      PATCH /targets/{id} 更新阶段
 ```
 
-**关键前置条件**：`/ranking`、`/resumes/rewrite`、`/resumes/rewrites/*` 都读库里保存的画像，没有画像返回 **409**。所以用户第一次使用必须先走完「上传 → 补全 → `PUT /profile`」。
+**关键前置条件**：`/ranking`、`/resumes/rewrite`、`/resumes/rewrites/*` 都读库里保存的画像，没有画像返回 **409**。所以用户第一次使用必须先走完「上传 → 补全 → `PUT /profile`」。另外，`POST /resumes/rewrite` 和 `PUT /resumes/rewrites/{job_id}` 只对**目标岗位**开放，没设为目标返回 **409**，所以前端要先 `POST /targets` 再跳到改写页。
 
 ## 3. 按页面的接口
 
@@ -98,6 +102,11 @@
 | `POST /ranking` | 按画像筛选并排序，返回 Top 30 |
 | `POST /jobs/{job_id}/match-detail` | 展开某个岗位：匹配理由、命中证据、差距、提升建议 |
 | `GET /jobs` | 浏览原始岗位列表（可选） |
+| `POST /targets` | 设为目标岗位（每张岗位卡片的「设为目标岗位 →」按钮） |
+
+- 点击按钮时调 `POST /targets`，`match_score` 传该岗位在 `/ranking` 结果里的 `final_score`
+- `/ranking` 不返回「是否已是目标」，进入推荐页时同时调 `GET /targets`，按 `job_id` 比对来决定按钮显示「设为目标岗位 →」还是「已是目标岗位 · 操作」
+- 「移出目标岗位」调 `DELETE /targets/{job_id}`，接口详情见页面 05
 
 #### `POST /ranking`
 - 请求：**无请求体**，用库里保存的画像实时计算
@@ -153,7 +162,7 @@
   - `deletion_suggestions[]`：`{section, index, line（null=删整条）, original, reasons[]}`，**后端没有应用**
   - `rejected_changes[]` / `rejected_deletions[]`：被后端事实校验拒掉的改动及原因（编造数字、编造技能等），可以不展示，或作为「系统已拦截」的说明
   - `guidelines[]`：引用的写作指南出处 `{key, title, source, source_url}`，用 `reasons[].guideline_keys` 关联
-- 错误：409 没有画像 / 岗位没有结构化分析；404 岗位不存在；502 大模型出错
+- 错误：409 没有画像 / 岗位还没设为目标 / 岗位没有结构化分析；404 岗位不存在；502 大模型出错
 
 **前端负责的部分**（后端不提供）：
 1. 逐块 Accept / Reject：Reject 的块用画像里的原文还原
@@ -166,7 +175,7 @@
 - 请求：完整的 `ResumeDocument`（用户确认后的终稿）
 - 响应：`{resume, stale, updated_at}`
 - 按「当前画像对应的那份简历 + 岗位」覆盖保存，不再做改写检查
-- 错误：409 没有画像；404 岗位不存在
+- 错误：409 没有画像 / 岗位还没设为目标；404 岗位不存在
 
 #### `GET /resumes/rewrites/{job_id}`
 - 响应：`{resume, stale, updated_at}`。`stale: true` 表示画像在保存之后又改过，提示用户「改写稿基于旧画像」
@@ -202,17 +211,67 @@
 - **只支持英文**，而且是录完后整段上传，不是实时转写；视频录制和回放由前端用浏览器 API 实现，后端只要音频
 - 错误：404 岗位或题目不存在；413 超过 25 MB；422 文件为空或格式不支持；502 转写服务出错；503 转写服务未配置
 
-### 页面 05：我的目标岗位 —— ⚠️ 后端待开发
+### 页面 05：我的目标岗位
 
-原型里的以下功能**后端还没有接口**，前端先不做或只做静态占位：
+| 接口 | 用途 |
+|---|---|
+| `GET /targets` | 目标岗位列表，按加入时间倒序 |
+| `POST /targets` | 设为目标岗位 |
+| `PATCH /targets/{job_id}` | 更新申请阶段、进度备注、模拟面试是否完成 |
+| `DELETE /targets/{job_id}` | 移出目标岗位 |
 
-- 设为目标岗位 / 移出目标岗位
-- 每个目标岗位的四步准备进度（JD 解析、简历改写、模拟面试、提交申请）
-- 申请阶段记录（未申请 → 已提交申请 → 笔试 → 一面 → … → 已收到 Offer / 未通过）和自填备注
-- 移出目标时级联删除该岗位的改写稿、面试记录和申请进度
-- 面试作答记录的保存（目前转写结果不落库）
+**`TargetJob`**（以上接口返回的单个目标）：
+```
+{
+  job_id, title, company, location, url（申请链接）,
+  match_score,            // 加入目标时传入的匹配度快照，可能为 null
+  stage, stage_note,      // 申请阶段、自填进度（不为空时优先显示）
+  interview_done_at,      // 模拟面试完成时间，null = 未完成
+  rewrite_status,         // none | saved | stale，见下
+  rewrite_updated_at, created_at, updated_at
+}
+```
 
-仪表盘里依赖这些数据的部分（「已投递 / 进笔试」统计、目标岗位卡片）同样待开发。
+**四步准备进度**（`pct = 完成步数 / 4`，由前端计算）：
+
+| 步骤 | 完成条件 |
+|---|---|
+| JD 解析与匹配 | 总是完成 |
+| 简历改写 | `rewrite_status !== "none"`（`stale` 表示画像在保存改写稿后又改过，可提示「改写稿基于旧画像」） |
+| 视频模拟面试 | `interview_done_at !== null` |
+| 提交申请 | `stage !== "not_applied"` |
+
+**`stage` 取值与中文标签**：
+
+| 值 | 标签 | 值 | 标签 |
+|---|---|---|---|
+| `not_applied` | 未申请 | `interview_3` | 三面 |
+| `submitted` | 已提交申请 | `hr_interview` | HR 面 |
+| `written_test` | 笔试 | `manager_interview` | 主管面 |
+| `interview_1` | 一面 | `offer` | 已收到 Offer |
+| `interview_2` | 二面 | `rejected` | 未通过 |
+
+#### `GET /targets`
+- 响应：`TargetJob[]`。没有画像时 `rewrite_status` 一律是 `none`
+- 原型的「按截止日期排序」不做（岗位没有截止日期），改为按加入时间倒序
+- 仪表盘的目标岗位卡片、「已投递 / 进笔试」统计都由前端从这个列表算
+
+#### `POST /targets`
+- 请求：`{"job_id": 123, "match_score": 82.5}`，`match_score` 可选，传 `/ranking` 结果里的 `final_score`
+- 响应：201 + `TargetJob`。**幂等**：已经是目标时原样返回，不重置进度，也不覆盖原来的匹配度
+- 错误：404 岗位不存在
+
+#### `PATCH /targets/{job_id}`
+- 请求（都可选，只改传了的字段）：`{"stage": "interview_1", "stage_note": "三面已过 · 等待 HR", "interview_done": true}`
+  - 原型「标记已提交」= `{"stage": "submitted"}`；「撤销标记」= `{"stage": "not_applied"}`，后端会同时清空 `stage_note`
+  - `interview_done: true` 记为当前时间完成，`false` 清除。前端在用户练完一场模拟面试后调用
+- 响应：更新后的 `TargetJob`
+- 错误：404 不是目标岗位；409 `stage` 是 `not_applied` 时写 `stage_note`（原型里未提交前进度输入框是禁用的）；422 `stage` 取值非法
+
+#### `DELETE /targets/{job_id}`
+- 响应：204
+- **同时删除该岗位的所有简历改写稿**，无法恢复。岗位本身仍在推荐列表里。前端先弹确认框（原型的「我已确认要删除」）
+- 错误：404 不是目标岗位
 
 ### 其他：健康检查
 
@@ -301,6 +360,7 @@
 - 简历改写的**个人摘要块**；回答问询后「重写该块」（前端直接替换占位符）
 - 原型写的「工作模式只影响排序」：后端的工作模式是**硬筛选**，不符合的岗位直接不出现在推荐里
 - 「JD 库同步于 xx:xx」、「画像更新于 x 月 x 日」：后端没有这两个时间字段
+- 目标岗位页的「按截止日期排序」（改为按加入时间倒序）、「已完成作答 N / 6 题」（后端只记模拟面试是否完成，不存每题作答）
 
 ---
 

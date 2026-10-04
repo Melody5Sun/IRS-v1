@@ -1,4 +1,3 @@
-import hashlib
 from io import BytesIO
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -8,12 +7,13 @@ from pdfminer.high_level import extract_text
 from app.repositories.job_repository import JobRepository
 from app.repositories.job_semantic_repository import JobSemanticRepository
 from app.repositories.resume_history_repository import ResumeRewriteRepository
+from app.repositories.target_job_repository import TargetJobRepository
 from app.resume.llm_resume_parser import ResumeParsingError
 from app.resume.resume_rewriter import ResumeRewriteError, ResumeRewriter
 from app.schemas.profile import UserProfile
 from app.schemas.resume import ResumeDocument, ResumeHistoryEntry, ResumeUpload
 from app.schemas.resume_rewrite import ResumeRewriteRequest, ResumeRewriteResult, SavedResumeRewrite
-from app.services.profile_service import profile_service
+from app.services.profile_service import profile_service, resume_hash
 from app.services.resume_service import ResumeService
 
 router = APIRouter()
@@ -21,6 +21,7 @@ resume_service = ResumeService()
 job_repository = JobRepository()
 semantic_repository = JobSemanticRepository()
 rewrite_repository = ResumeRewriteRepository()
+target_repository = TargetJobRepository()
 resume_rewriter = ResumeRewriter()
 
 
@@ -66,6 +67,7 @@ def rewrite_resume(request: ResumeRewriteRequest) -> ResumeRewriteResult:
     """按用户选的岗位改写画像里的简历：返回每块的原稿/改写稿/理由/待补充事项和待确认的删除建议，不改画像。"""
     profile = _saved_profile()
     _ensure_job_exists(request.job_id)
+    _ensure_target(request.job_id)
     job = semantic_repository.get_analyzed_job(request.job_id)
     if job is None:
         raise HTTPException(status_code=409, detail="该岗位还没有结构化分析结果，无法改写")
@@ -84,16 +86,17 @@ def save_resume_rewrite(job_id: int, resume: ResumeDocument) -> SavedResumeRewri
     """保存用户确认删除、回填占位后的改写稿，按（当前画像的上传记录, 岗位）覆盖；不再跑改写检查，回填的是用户的真实数据。"""
     profile = _saved_profile()
     _ensure_job_exists(job_id)
+    _ensure_target(job_id)
     # ponytail: 哈希取的是 PUT 时的画像，若在 POST 改写和 PUT 保存之间改了画像会被误判为不过时；
     # 需要时让 POST 返回 source_hash、PUT 时带回来
-    return rewrite_repository.save(profile.resume_upload_id, job_id, resume, _resume_hash(profile.resume))
+    return rewrite_repository.save(profile.resume_upload_id, job_id, resume, resume_hash(profile.resume))
 
 
 @router.get("/rewrites/{job_id}", response_model=SavedResumeRewrite)
 def get_resume_rewrite(job_id: int) -> SavedResumeRewrite:
     """读取当前画像这份简历针对该岗位保存的改写稿；stale=true 表示画像在保存之后又改过。"""
     profile = _saved_profile()
-    saved = rewrite_repository.get(profile.resume_upload_id, job_id, _resume_hash(profile.resume))
+    saved = rewrite_repository.get(profile.resume_upload_id, job_id, resume_hash(profile.resume))
     if saved is None:
         raise HTTPException(status_code=404, detail="这份简历还没有保存该岗位的改写稿")
     return saved
@@ -111,6 +114,7 @@ def _ensure_job_exists(job_id: int) -> None:
         raise HTTPException(status_code=404, detail=f"未找到岗位 {job_id}")
 
 
-def _resume_hash(resume: ResumeDocument) -> str:
-    # 同一个模型的序列化结果是稳定的，不用额外规范化
-    return hashlib.sha256(resume.model_dump_json().encode()).hexdigest()
+def _ensure_target(job_id: int) -> None:
+    # 只有设为目标的岗位才能改写简历；移出目标时改写稿会一起删除
+    if not target_repository.exists(job_id):
+        raise HTTPException(status_code=409, detail="请先把该岗位设为目标岗位")
